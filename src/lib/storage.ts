@@ -68,6 +68,9 @@ export function parseTripExport(text: string): Trip[] {
     if (t.layouts !== undefined && (typeof t.layouts !== 'object' || t.layouts === null || Array.isArray(t.layouts))) {
       delete t.layouts;
     }
+    if (t.routes !== undefined && (typeof t.routes !== 'object' || t.routes === null || Array.isArray(t.routes))) {
+      delete t.routes;
+    }
   }
   return data.trips;
 }

@@ -1,8 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GeocodeStatus, Trip } from '../types';
 import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, setPhotoSpot, byTime } from '../lib/trip';
 import { withSuggestedName } from '../lib/importer';
-import { formatDateSpan } from '../lib/format';
+import { formatDateSpan, formatDistance } from '../lib/format';
+import { mapsLinks, osrmRouter, setRoute, travelledKm, tripLegs } from '../lib/routing';
+import { currentPlatform } from '../providers/icloud';
 import { getProvider } from '../providers';
 import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
@@ -26,6 +28,23 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
   const [draftName, setDraftName] = useState<string>();
   const [exportMessage, setExportMessage] = useState<string>();
   const visits = useMemo(() => computeVisits(trip.photos), [trip.photos]);
+  const legs = useMemo(() => tripLegs(visits, trip.places, trip.routes), [visits, trip.places, trip.routes]);
+  const links = useMemo(() => mapsLinks(legs, trip.places, currentPlatform), [legs, trip.places]);
+  const pendingLegs = legs.filter((l) => l.pending);
+  const nextLeg = pendingLegs[0];
+  const [routeError, setRouteError] = useState(false);
+
+  // Look up routes one at a time in the background; each one is saved with the trip, so this happens only once.
+  useEffect(() => {
+    if (!nextLeg?.key || !nextLeg.profile || routeError) return;
+    const { key, profile, from, to } = nextLeg;
+    const controller = new AbortController();
+    osrmRouter
+      .route(from, to, profile, controller.signal)
+      .then((route) => onChange((t) => setRoute(t, key, route)))
+      .catch(() => !controller.signal.aborted && setRouteError(true));
+    return () => controller.abort();
+  }, [nextLeg?.key, routeError]);
   const times = useMemo(() => trip.photos.filter((p) => p.localTime).sort(byTime), [trip.photos]);
   const unlocated = trip.photos.filter((p) => p.lat === null).length;
   const selectedPlace = trip.places.find((p) => p.id === selectedPlaceId);
@@ -66,11 +85,18 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           {times.length > 0 && <span>{formatDateSpan(times[0].localTime!, times[times.length - 1].localTime!)}</span>}
           <span>{trip.photos.length} photos</span>
           <span>{trip.places.length} places</span>
+          {legs.length > 0 && <span title="Along the routes, or as the crow flies for flights">≈ {formatDistance(travelledKm(legs))} travelled</span>}
           <span>{provider.name}</span>
           {geocodeStatus === 'working' && <span className="pulse">Looking up place names…</span>}
           {geocodeStatus === 'error' && (
             <button className="link" onClick={onRetryGeocoding}>
               Some place names couldn’t be looked up. Retry
+            </button>
+          )}
+          {pendingLegs.length > 0 && !routeError && <span className="pulse">Finding routes… {legs.length - pendingLegs.length}/{legs.length}</span>}
+          {routeError && (
+            <button className="link" onClick={() => setRouteError(false)}>
+              Some routes couldn’t be looked up. Retry
             </button>
           )}
         </div>
@@ -91,6 +117,24 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
               ))}
             </select>
           </label>
+          {links.length === 1 && (
+            <a className="button small" href={links[0].url} target="_blank" rel="noopener noreferrer" title={`Directions: ${links[0].label}`}>
+              🧭 Open in Maps
+            </a>
+          )}
+          {links.length > 1 && (
+            <details className="maps-menu">
+              <summary className="button small">🧭 Open in Maps</summary>
+              <div className="maps-menu-list">
+                <p className="muted small">The route in {links.length} parts (split at flights and at the maps app’s limit on stops):</p>
+                {links.map((l, i) => (
+                  <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.currentTarget.closest('details')?.removeAttribute('open')}>
+                    {i + 1}. {l.label}
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
           <a className="button small" href={`#/add/${encodeURIComponent(trip.id)}`}>
             + Add photos
           </a>
@@ -125,6 +169,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
         <TripMap
           places={trip.places}
           visits={visits}
+          legs={legs}
           photos={trip.photos}
           selectedPlaceId={selectedPlaceId}
           panToSelected={selection?.from !== 'map'}
@@ -179,7 +224,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
 
       <p className="muted small">
         This trip, including photo previews, is stored only in this browser. Place names are looked up with OpenStreetMap
-        Nominatim, which receives the approximate coordinates of each place.
+        Nominatim, and routes with OSRM (routing.openstreetmap.de); both receive the coordinates of the places.
       </p>
     </div>
   );

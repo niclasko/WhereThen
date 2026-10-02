@@ -58,6 +58,15 @@ export interface Trip {
   places: Place[];
   /** Places (with looked-up and custom names) per level of detail, keyed by radius, so switching back needs no lookups. */
   layouts?: Record<string, SavedLayout>;
+  /** Looked-up routes between places, keyed by profile and coordinates (`null`: no route found). */
+  routes?: Record<string, SavedRoute | null>;
+}
+
+export interface SavedRoute {
+  distanceKm: number;
+  durationMin: number;
+  /** Encoded polyline (precision 5) of the simplified route. */
+  path: string;
 }
 
 export interface SavedLayout {

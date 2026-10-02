@@ -63,3 +63,9 @@ export function formatDuration(ms: number): string {
   const unit = days === 1 ? 'day' : 'days';
   return hours % 24 ? `${days} ${unit} ${hours % 24} h` : `${days} ${unit}`;
 }
+
+/** "850 m", "12 km", "1,240 km". */
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 100) * 10} m`;
+  return `${(km < 10 ? Math.round(km * 10) / 10 : Math.round(km)).toLocaleString()} km`;
+}

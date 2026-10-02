@@ -4,12 +4,14 @@ import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'reac
 import type { PhotoRecord, Place, Visit } from '../types';
 import { byTime, placeName } from '../lib/trip';
 import { safeColor, safeImageSrc } from '../lib/nav';
-import { formatDuration, formatRange } from '../lib/format';
+import { formatDay, formatDistance, formatDuration, formatRange } from '../lib/format';
+import { decodePolyline, flightArc, type TripLeg } from '../lib/routing';
 import { anchorFrom, type Anchor } from './Popover';
 
 interface Props {
   places: Place[];
   visits: Visit[];
+  legs: TripLeg[];
   photos: PhotoRecord[];
   selectedPlaceId?: string;
   /** Pan to the selected place (off when it was picked on the map itself, so the pin stays under the panel). */
@@ -74,6 +76,38 @@ function FitToPlaces({ places }: { places: Place[] }) {
   return null;
 }
 
+function legStyle(leg: TripLeg): L.PathOptions {
+  const base = { color: '#1e293b', weight: 3, opacity: 0.75 };
+  if (leg.mode === 'flight') return { ...base, weight: 2, dashArray: '2 7', lineCap: 'round' };
+  if (leg.mode === 'walk') return { ...base, dashArray: '1 6', lineCap: 'round' };
+  if (!leg.route) return { ...base, weight: 2, opacity: 0.55, dashArray: '6 6' };
+  return base;
+}
+
+const MODE_TEXT = { flight: '✈️ Flight', walk: '🚶 Walk', road: '🚗 By road', unknown: 'Route unknown' } as const;
+
+function LegTooltip({ leg, places }: { leg: TripLeg; places: Place[] }) {
+  const name = (p: Place) => placeName(p, places.indexOf(p));
+  const facts = leg.route
+    ? [formatDistance(leg.route.distanceKm), leg.route.durationMin >= 1 && `about ${formatDuration(Math.max(leg.route.durationMin, 1) * 60_000)}`]
+    : [`${formatDistance(leg.straightKm)}${leg.mode === 'flight' ? '' : ' as the crow flies'}`];
+  const gap = formatDuration(leg.arrive - leg.depart);
+  return (
+    <div className="map-tip leg-tip">
+      <strong>
+        {name(leg.from)} → {name(leg.to)}
+      </strong>
+      <div>
+        {leg.pending ? 'Finding route…' : MODE_TEXT[leg.mode]} · {facts.filter(Boolean).join(' · ')}
+      </div>
+      <div className="muted">
+        {formatDay(leg.departLocal)}
+        {gap && ` · ${gap} between photos`}
+      </div>
+    </div>
+  );
+}
+
 function FocusSelected({ place }: { place?: Place }) {
   const map = useMap();
   useEffect(() => {
@@ -82,7 +116,7 @@ function FocusSelected({ place }: { place?: Place }) {
   return null;
 }
 
-export function TripMap({ places, visits, photos, selectedPlaceId, panToSelected = true, onSelect }: Props) {
+export function TripMap({ places, visits, legs, photos, selectedPlaceId, panToSelected = true, onSelect }: Props) {
   const byId = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
   const visitsByPlace = useMemo(() => {
     const m = new Map<string, Visit[]>();
@@ -97,23 +131,36 @@ export function TripMap({ places, visits, photos, selectedPlaceId, panToSelected
     }
     return m;
   }, [photos]);
-  const route = useMemo(
+  const legLines = useMemo(
     () =>
-      visits
-        .map((v) => byId.get(v.placeId))
-        .filter((p): p is Place => !!p)
-        .map((p) => [p.lat, p.lon] as [number, number]),
-    [visits, byId],
+      legs.map((leg) => ({
+        leg,
+        positions: leg.route
+          ? decodePolyline(leg.route.path)
+          : leg.mode === 'flight'
+            ? flightArc(leg.from, leg.to)
+            : ([
+                [leg.from.lat, leg.from.lon],
+                [leg.to.lat, leg.to.lon],
+              ] as [number, number][]),
+      })),
+    [legs],
   );
   const selected = selectedPlaceId ? byId.get(selectedPlaceId) : undefined;
 
   return (
     <MapContainer className="map" center={[20, 0]} zoom={2} scrollWheelZoom worldCopyJump>
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Routes <a href="https://routing.openstreetmap.de/about.html">FOSSGIS OSRM</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {route.length > 1 && <Polyline positions={route} pathOptions={{ color: '#334155', weight: 2, opacity: 0.6, dashArray: '6 6' }} />}
+      {legLines.map(({ leg, positions }, i) => (
+        <Polyline key={`${i}:${leg.from.id}:${leg.to.id}`} positions={positions} pathOptions={legStyle(leg)}>
+          <Tooltip sticky opacity={1} className="map-tooltip">
+            <LegTooltip leg={leg} places={places} />
+          </Tooltip>
+        </Polyline>
+      ))}
       {places.map((place, i) => (
         <Marker
           key={place.id}

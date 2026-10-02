@@ -197,3 +197,12 @@ footer.viewer-bar { padding-bottom: max(0.7rem, env(safe-area-inset-bottom)); fl
 .map-tip .muted { color: #64748b; }
 .map-tip ul { margin: 0.2rem 0; padding: 0; list-style: none; }
 .map-tip li .muted { white-space: nowrap; }
+.map-tip.leg-tip { display: block; max-width: 260px; white-space: normal; }
+.map-tip.leg-tip strong { display: block; }
+.maps-menu { position: relative; }
+.maps-menu > summary { list-style: none; cursor: pointer; }
+.maps-menu > summary::-webkit-details-marker { display: none; }
+.maps-menu-list { position: absolute; z-index: 950; top: calc(100% + 6px); left: 0; width: max-content; min-width: 240px; max-width: min(90vw, 380px); display: flex; flex-direction: column; gap: 0.15rem; padding: 0.6rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 36px rgba(15, 23, 42, 0.28); }
+.maps-menu-list p { margin: 0 0 0.3rem; }
+.maps-menu-list a { padding: 0.4rem 0.5rem; border-radius: 6px; color: inherit; text-decoration: none; }
+.maps-menu-list a:hover, .maps-menu-list a:focus-visible { background: var(--bg); }

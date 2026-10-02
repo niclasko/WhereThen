@@ -5,6 +5,8 @@
 - 📷 Pick a set of photos from your phone (iCloud Photos to start with)
 - 🏷️ Get a suggested trip name (e.g. *Summer Holiday 2026 – Italy*, *Weekend in Paris*), or type your own
 - 🗺️ See numbered, colour-coded places on a map, connected in the order you visited them. Hover over (or tap) a place to see when you were there, how long you stayed and a photo preview
+- 🚗 See the route you most likely travelled between places: along the roads, on foot for short hops, or as a ✈️ flight arc when the distance couldn't have been driven in the time between the photos. Hover over (or tap) a route for its distance and travel time; the trip shows the total distance travelled
+- 🧭 **Open in Maps**: follow the trip again with directions through all its places, in order (Apple Maps on iPhone, iPad and Mac, Google Maps elsewhere). Flights are left out, and long trips are split into parts because maps apps limit the number of stops
 - 🕒 See a timeline whose colours and numbers match the map, grouped by day
 - 🔒 Personal and browser-only: **metadata** (capture time, GPS position, file name, camera), a **reference** and a small **preview** of each photo are stored in your browser's IndexedDB. There is no account or server, and photos are never uploaded.
 
@@ -33,6 +35,7 @@ The button label and instructions adapt to the device, so each device only sees 
 
 - **Detail level**: group photos into *Spots* (300 m), *Neighbourhoods* (2 km), *Towns* (10 km, default) or *Regions* (50 km). Each level's places and names (including your renames) are saved with the trip, so switching back is instant and needs no new lookups.
 - **Place names** come from OpenStreetMap Nominatim (rate-limited to 1 request/second and cached locally). You can rename any place.
+- **Routes** come from the FOSSGIS OSRM server used by openstreetmap.org (one request at a time). Each route is looked up once and saved with the trip, so it's included in exports and kept when you switch Detail levels. The travel mode is a guess from distance and timing; a fast train shows as a road route.
 - **Add photos** to an existing trip. Adding the same photos again changes nothing: a photo is recognised by its file name and size, or by its name and capture time (so the HEIC and JPEG versions of a photo count as the same photo). Existing places and names are kept.
 - **Remove photos**: open a place and tap **Select photos**, or use **Remove from trip** in the photo viewer. Photos without a location can be removed from the note below the timeline. The originals are never touched.
 - **Photo previews** (always on): 640 px JPEG previews of about 10–40 KB each are made on your device when you import and stored with the trip in this browser's IndexedDB. They are never uploaded. Photos the browser can't decode (e.g. HEIC on Windows) show a 📷 placeholder. To add previews to an older trip, use "+ Add photos" and choose the same photos again.
@@ -51,7 +54,8 @@ Everything lives in this browser on this device. Other browsers and devices don'
 | Photo bytes | Read locally to extract EXIF, then discarded. Never uploaded. |
 | Photo previews | IndexedDB in your browser, and trip files you export |
 | Metadata and references | IndexedDB in your browser |
-| Place coordinates (one per place, not per photo) | OpenStreetMap Nominatim, for place names |
+| Place coordinates, and photo coordinates of a place you open | OpenStreetMap Nominatim, for place and street names |
+| Coordinates of consecutive places | FOSSGIS OSRM (routing.openstreetmap.de), for routes between them |
 | Map view | OpenStreetMap tile servers |
 
 ## Development
@@ -78,6 +82,7 @@ src/
     trip.ts         Clustering photos into places, deriving visits, colours
     naming.ts       Trip name suggestions
     geocode.ts      Reverse geocoding (pluggable Geocoder, Nominatim implementation)
+    routing.ts      Legs between places, travel-mode guess, routes (pluggable Router, OSRM), Maps links
     importer.ts     Provider photos → metadata records → trip
     storage.ts      IndexedDB persistence, export format
   components/       React UI (map, timeline, import, trip list)
