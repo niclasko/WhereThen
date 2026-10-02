@@ -7,7 +7,6 @@ import { getProvider } from '../providers';
 import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
 import { PlaceDetails } from './PlaceDetails';
-import { downloadTrips, slug } from './download';
 
 interface Props {
   trip: Trip;
@@ -84,9 +83,6 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           <a className="button small" href={`#/add/${encodeURIComponent(trip.id)}`}>
             + Add photos
           </a>
-          <button className="button small" onClick={() => downloadTrips([trip], `${slug(trip.name)}.wherethen.json`)}>
-            Export
-          </button>
           <button
             className="button small danger"
             onClick={() => window.confirm(`Delete “${trip.name}”? Your photos in ${provider.name} are not affected.`) && onDelete()}
@@ -131,50 +127,10 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
         </p>
       )}
 
-      <details className="card settings">
-        <summary>Photo source settings</summary>
-        {provider.settingsFields.map((field) => (
-          <SettingField
-            key={field.key}
-            label={field.label}
-            help={field.help}
-            placeholder={field.placeholder}
-            value={trip.providerSettings[field.key] ?? ''}
-            validate={field.validate}
-            onSave={(value) =>
-              onChange((t) => ({ ...t, providerSettings: { ...t.providerSettings, [field.key]: value }, updatedAt: Date.now() }))
-            }
-          />
-        ))}
-        <p className="muted small">
-          WhereThen stores only metadata and references in this browser. Place names are looked up with OpenStreetMap
-          Nominatim, which receives the approximate coordinates of each place.
-        </p>
-      </details>
+      <p className="muted small">
+        This trip, including photo previews, is stored only in this browser. Place names are looked up with OpenStreetMap
+        Nominatim, which receives the approximate coordinates of each place.
+      </p>
     </div>
-  );
-}
-
-function SettingField(props: {
-  label: string;
-  help?: string;
-  placeholder?: string;
-  value: string;
-  validate?: (v: string) => string | undefined;
-  onSave: (v: string) => void;
-}) {
-  const [value, setValue] = useState(props.value);
-  const error = props.validate?.(value.trim());
-  return (
-    <label className="field">
-      <span>{props.label}</span>
-      <input
-        value={value}
-        placeholder={props.placeholder}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => !error && value.trim() !== props.value && props.onSave(value.trim())}
-      />
-      {error ? <small className="error-text">{error}</small> : props.help && <small className="muted">{props.help}</small>}
-    </label>
   );
 }

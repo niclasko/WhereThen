@@ -4,7 +4,7 @@ import { assignPlaces, computeVisits, reclusterTrip } from './trip';
 import { suggestTripName, seasonFor } from './naming';
 import { labelFromNominatim, zoomForRadius } from './geocode';
 import { formatRange } from './format';
-import { isICloudUrl, icloudProvider } from '../providers/icloud';
+import { icloudProvider, detectPlatform, icloudPickerGuide } from '../providers/icloud';
 import { safeColor, safeImageSrc } from './nav';
 import { createTrip, addPhotosToTrip } from './importer';
 
@@ -59,7 +59,7 @@ describe('clustering and visits', () => {
   });
 
   it('keeps existing places (and their labels) when photos are added', () => {
-    const trip = createTrip('icloud', {}, photos.slice(0, 2));
+    const trip = createTrip('icloud', photos.slice(0, 2));
     const labelled = { ...trip, places: trip.places.map((p) => ({ ...p, label: { name: 'Rome', country: 'Italy' } })) };
     const { trip: next, added } = addPhotosToTrip(labelled, [photos[1], photo('2026-07-11T10:00:00', ...FLORENCE)]);
     expect(added).toBe(1);
@@ -68,8 +68,18 @@ describe('clustering and visits', () => {
     expect(next.photos).toHaveLength(3);
   });
 
+  it('fills in missing previews when known photos are added again', () => {
+    const trip = createTrip('icloud', photos.slice(0, 2));
+    const again = { ...photos[0], id: 'other', thumbnail: 'data:image/jpeg;base64,AAAA' };
+    const { trip: next, added, previews } = addPhotosToTrip(trip, [again]);
+    expect(added).toBe(0);
+    expect(previews).toBe(1);
+    expect(next.photos.find((p) => p.id === photos[0].id)?.thumbnail).toBe(again.thumbnail);
+    expect(next.photos).toHaveLength(2);
+  });
+
   it('reclusters a trip', () => {
-    const trip = createTrip('icloud', {}, photos);
+    const trip = createTrip('icloud', photos);
     expect(reclusterTrip(trip, 500).places).toHaveLength(1);
   });
 });
@@ -150,13 +160,25 @@ describe('formatting', () => {
 });
 
 describe('iCloud provider and sanitising', () => {
-  it('only links to iCloud over https', () => {
-    expect(isICloudUrl('https://www.icloud.com/sharedalbum/#B0abc')).toBe(true);
-    expect(isICloudUrl('javascript:alert(1)')).toBe(false);
-    expect(isICloudUrl('https://icloud.com.evil.com/')).toBe(false);
+  it('links to iCloud Photos', () => {
     const ref = { providerId: 'icloud', externalId: 'a', fileName: 'a.jpg' };
-    expect(icloudProvider.getViewUrl(ref, { sharedAlbumUrl: 'javascript:alert(1)' })).toBe('https://www.icloud.com/photos/');
-    expect(icloudProvider.getViewUrl(ref, { sharedAlbumUrl: 'https://share.icloud.com/photos/x' })).toBe('https://share.icloud.com/photos/x');
+    expect(icloudProvider.getViewUrl(ref)).toBe('https://www.icloud.com/photos/');
+    expect(icloudProvider.viewLabel).toBe('Find in iCloud Photos');
+  });
+
+  it('detects the platform for picker guidance', () => {
+    expect(detectPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')).toBe('ios');
+    expect(detectPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 5)).toBe('ios');
+    expect(detectPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 0)).toBe('mac');
+    expect(detectPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/140')).toBe('windows');
+    expect(detectPlatform('Mozilla/5.0 (Linux; Android 15)')).toBe('android');
+    expect(detectPlatform('Mozilla/5.0 (X11; Linux x86_64)')).toBe('other');
+    expect(icloudPickerGuide('windows').pickLabel).not.toMatch(/^Choose from iCloud/);
+    expect(icloudPickerGuide('ios').pickLabel).toBe('Choose from iCloud Photos');
+    // Each device only gets its own instructions.
+    expect(icloudPickerGuide('ios').instructions.join(' ')).not.toMatch(/Windows|Android/);
+    expect(icloudPickerGuide('windows').instructions.join(' ')).not.toMatch(/iPhone|Android/);
+    expect(icloudPickerGuide('android').instructions.join(' ')).not.toMatch(/Windows|iPhone/);
   });
 
   it('sanitises colours and image sources', () => {

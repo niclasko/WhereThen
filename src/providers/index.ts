@@ -10,4 +10,4 @@ export function getProvider(id: string): PhotoProvider {
   return provider;
 }
 
-export type { PhotoProvider, ProviderPhoto, ProviderSettingField } from './types';
+export type { PhotoProvider, ProviderPhoto } from './types';

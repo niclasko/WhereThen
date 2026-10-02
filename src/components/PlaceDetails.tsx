@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Place, Trip, Visit } from '../types';
 import { formatDateTime, formatRange } from '../lib/format';
 import { byTime, placeName } from '../lib/trip';
 import { safeColor, safeImageSrc } from '../lib/nav';
-import { getProvider } from '../providers';
+import { PhotoViewer } from './PhotoViewer';
 
 interface Props {
   trip: Trip;
@@ -15,8 +15,9 @@ interface Props {
 }
 
 export function PlaceDetails({ trip, place, index, visits, onRename, onClose }: Props) {
-  const provider = getProvider(trip.providerId);
   const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState<number>();
+  useEffect(() => setViewing(undefined), [place.id]);
   const photos = trip.photos.filter((p) => p.placeId === place.id).sort(byTime);
   const name = placeName(place, index);
 
@@ -61,30 +62,36 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onClose }: 
         ))}
       </ul>
       <ul className="photo-grid">
-        {photos.map((photo) => {
-          const url = provider.getViewUrl(photo.ref, trip.providerSettings);
+        {photos.map((photo, i) => {
           const thumb = safeImageSrc(photo.thumbnail);
           return (
-            <li key={photo.id} className="photo">
-              {thumb ? <img src={thumb} alt={photo.ref.fileName} loading="lazy" /> : <div className="photo-placeholder">📷</div>}
-              <span className="file" title={photo.ref.fileName}>
-                {photo.ref.fileName}
-              </span>
-              {photo.localTime && (
-                <span className="muted small">
-                  {formatDateTime(photo.localTime)}
-                  {photo.timeSource === 'file' ? ' (file date)' : ''}
+            <li key={photo.id}>
+              <button className="photo" onClick={() => setViewing(i)} aria-label={`View ${photo.ref.fileName}`}>
+                {thumb ? <img src={thumb} alt="" loading="lazy" /> : <div className="photo-placeholder">📷</div>}
+                <span className="file" title={photo.ref.fileName}>
+                  {photo.ref.fileName}
                 </span>
-              )}
-              {url && (
-                <a href={url} target="_blank" rel="noopener noreferrer" className="small">
-                  {provider.viewLabel} ↗
-                </a>
-              )}
+                {photo.localTime && (
+                  <span className="muted small">
+                    {formatDateTime(photo.localTime)}
+                    {photo.timeSource === 'file' ? ' (file date)' : ''}
+                  </span>
+                )}
+              </button>
             </li>
           );
         })}
       </ul>
+      {viewing !== undefined && photos[viewing] && (
+        <PhotoViewer
+          trip={trip}
+          photos={photos}
+          index={viewing}
+          placeName={name}
+          onIndex={setViewing}
+          onClose={() => setViewing(undefined)}
+        />
+      )}
     </section>
   );
 }

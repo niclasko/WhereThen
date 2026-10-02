@@ -1,18 +1,9 @@
 import type { PhotoRef } from '../types';
 import type { ExtractedMetadata } from '../lib/exif';
 
-export interface ProviderSettingField {
-  key: string;
-  label: string;
-  placeholder?: string;
-  help?: string;
-  /** Returns an error message when the value is invalid. */
-  validate?: (value: string) => string | undefined;
-}
-
 /**
  * A photo handed over by a provider. `file` is only used transiently in the browser to read
- * metadata (and optionally a local thumbnail); it is never uploaded or persisted.
+ * metadata and make a preview; the photo itself is never uploaded or persisted.
  */
 export interface ProviderPhoto {
   ref: PhotoRef;
@@ -34,12 +25,12 @@ export interface PhotoProvider {
   pickLabel: string;
   /** Step-by-step instructions shown on the import screen. */
   instructions: string[];
-  settingsFields: ProviderSettingField[];
   /** `accept` attribute for the file input. Required when `fromFiles` is implemented. */
   fileAccept?: string;
-  fromFiles?(files: File[], settings: Record<string, string>): Promise<ProviderPhoto[]>;
-  pick?(settings: Record<string, string>): Promise<ProviderPhoto[]>;
-  /** A safe https URL where the user can view the original photo, if one is available. */
-  getViewUrl(ref: PhotoRef, settings: Record<string, string>): string | undefined;
+  fromFiles?(files: File[]): Promise<ProviderPhoto[]>;
+  pick?(): Promise<ProviderPhoto[]>;
+  /** A safe https URL where the user can find the original photo, if one is available. */
+  getViewUrl(ref: PhotoRef): string | undefined;
+  /** Link text for `getViewUrl`. */
   viewLabel: string;
 }

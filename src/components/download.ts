@@ -1,10 +1,13 @@
 import type { Trip } from '../types';
 import type { TripExport } from '../lib/storage';
 
-export function downloadTrips(trips: Trip[], fileName: string) {
+function tripsFile(trips: Trip[], fileName: string): File {
   const data: TripExport = { app: 'WhereThen', version: 1, trips };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+  return new File([JSON.stringify(data, null, 2)], fileName, { type: 'application/json' });
+}
+
+export function downloadTrips(trips: Trip[], fileName: string) {
+  const url = URL.createObjectURL(tripsFile(trips, fileName));
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;

@@ -49,7 +49,6 @@ export interface Trip {
   suggestedName: string;
   nameIsCustom: boolean;
   providerId: string;
-  providerSettings: Record<string, string>;
   clusterRadiusKm: number;
   createdAt: number;
   updatedAt: number;
