@@ -31,6 +31,7 @@ export function icloudPickerGuide(platform: DevicePlatform): { pickLabel: string
         instructions: [
           'Tap “Choose from iCloud Photos” and pick “Photo Library”. It shows your whole iCloud library, including photos not stored on this device.',
           'Before tapping Add, tap “Options” at the top and turn on “Location”. Otherwise iOS removes the GPS data.',
+          'Lots of photos? iOS prepares every selected photo before handing them over, which can take minutes for hundreds of photos stored only in iCloud. Picking about 50 at a time is faster: save the trip, then use “+ Add photos” for the next batch.',
           ALWAYS,
         ],
       };

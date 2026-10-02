@@ -20,18 +20,25 @@ interface Props {
   onCancel: () => void;
 }
 
+export function formatElapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export function ImportProgressPanel({ picking, progress, onCancel }: Props) {
   const [, tick] = useState(0);
+  const [waitingSince] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
   if (picking || !progress) {
+    const waited = Date.now() - waitingSince;
     return (
       <div className="progress-panel" role="status" aria-live="polite">
         <div className="progress-head">
-          <strong>Waiting for your photos…</strong>
+          <strong>Waiting for your photos… {formatElapsed(waited)}</strong>
           <button className="link" onClick={onCancel}>
             Cancel
           </button>
@@ -40,9 +47,14 @@ export function ImportProgressPanel({ picking, progress, onCancel }: Props) {
           <span />
         </div>
         <p className="muted small">
-          Photos stored only in iCloud are downloaded by your device first, which can take a while for many photos.
-          The progress bar starts as soon as they arrive.
+          Your device is preparing the photos and downloads any that are stored only in iCloud. It doesn’t tell
+          websites how far along it is, so the progress bar starts once all photos have arrived. Keep this screen open.
         </p>
+        {waited > 30_000 && (
+          <p className="muted small">
+            Taking long? Next time, pick about 50 photos at a time and add the rest with “+ Add photos”.
+          </p>
+        )}
       </div>
     );
   }
