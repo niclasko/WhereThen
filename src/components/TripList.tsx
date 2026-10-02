@@ -63,7 +63,7 @@ export function TripList({ trips, notFound, onImportBackup }: Props) {
           Export all trips
         </button>
         <button className="button" onClick={() => fileRef.current?.click()}>
-          Import backup…
+          Import trip file…
         </button>
         <input
           ref={fileRef}
@@ -83,7 +83,8 @@ export function TripList({ trips, notFound, onImportBackup }: Props) {
         />
         {message && <span className="muted">{message}</span>}
         <p className="muted small">
-          Trips are stored in this browser only. Export a backup to move them to another device.
+          Trips are stored in this browser only. Use “⬇ Export” on a trip, or “Export all trips”, to save them as a
+          file you can keep or send to someone. Open it with “Import trip file…”.
         </p>
       </section>
     </div>

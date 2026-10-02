@@ -6,7 +6,7 @@ import { withSuggestedName } from './lib/importer';
 import { TripView } from './components/TripView';
 import { ImportView } from './components/ImportView';
 import { TripList } from './components/TripList';
-import { navigate } from './lib/nav';
+import { navigate, tripHref } from './lib/nav';
 
 type Route = { kind: 'home' } | { kind: 'new' } | { kind: 'trip'; id: string } | { kind: 'add'; id: string };
 
@@ -119,6 +119,7 @@ export default function App() {
     async (file: File) => {
       const imported = parseTripExport(await file.text());
       for (const trip of imported) await commit(trip);
+      if (imported.length === 1) navigate(tripHref(imported[0].id));
       return imported.length;
     },
     [commit],

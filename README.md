@@ -34,7 +34,8 @@ The button label and instructions adapt to the device, so each device only sees 
 - **Add photos** to an existing trip. Duplicates are skipped, and existing places and names are kept.
 - **Photo previews** (always on): 640 px JPEG previews of about 10–40 KB each are made on your device when you import and stored with the trip in this browser's IndexedDB. They are never uploaded. Photos the browser can't decode (e.g. HEIC on Windows) show a 📷 placeholder. To add previews to an older trip, use "+ Add photos" and choose the same photos again.
 - **Import progress**: a progress bar with photo count, located count, time remaining and Cancel. On iPhone, photos stored only in iCloud are downloaded by iOS before the page receives them. That phase can't be measured, so a "Waiting for your photos…" indicator is shown once the picker closes (not while you're still choosing).
-- **Export / import** trips (including previews) as JSON to back up or move them between devices.
+- **Export a trip** (⬇ Export): downloads the whole trip (map, timeline, place names and previews) as one `.wherethen.json` file. On iPhone it goes to Files (iCloud Drive › Downloads by default). Do what you like with it: keep it as a backup, or send it via Messages, Mail or AirDrop. Anyone can open it in WhereThen with **Import trip file…** to get their own copy. The file contains photo times, positions, file names and previews (not the original photos), so only send it to people you'd show the photos to. A trip of about 300 photos is roughly 10 MB.
+- **Export all trips / Import trip file…** to back up or move all trips between devices.
 
 ## Where your trips are stored
 
@@ -45,7 +46,7 @@ Everything lives in this browser on this device. Other browsers and devices don'
 | Data | Where it goes |
 | --- | --- |
 | Photo bytes | Read locally to extract EXIF, then discarded. Never uploaded. |
-| Photo previews | IndexedDB in your browser, and backup files you save |
+| Photo previews | IndexedDB in your browser, and trip files you export |
 | Metadata and references | IndexedDB in your browser |
 | Place coordinates (one per place, not per photo) | OpenStreetMap Nominatim, for place names |
 | Map view | OpenStreetMap tile servers |

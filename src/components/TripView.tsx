@@ -7,6 +7,7 @@ import { getProvider } from '../providers';
 import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
 import { PlaceDetails } from './PlaceDetails';
+import { exportTrip } from './download';
 
 interface Props {
   trip: Trip;
@@ -20,6 +21,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
   const provider = getProvider(trip.providerId);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
   const [draftName, setDraftName] = useState<string>();
+  const [exportMessage, setExportMessage] = useState<string>();
   const visits = useMemo(() => computeVisits(trip.photos), [trip.photos]);
   const times = useMemo(() => trip.photos.filter((p) => p.localTime).sort(byTime), [trip.photos]);
   const unlocated = trip.photos.filter((p) => p.lat === null).length;
@@ -84,12 +86,23 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
             + Add photos
           </a>
           <button
+            className="button small"
+            title="Download this trip as a file, including previews"
+            onClick={() => {
+              exportTrip(trip);
+              setExportMessage('Trip exported as a .wherethen.json file. Open it in WhereThen with “Import trip file…”.');
+            }}
+          >
+            ⬇ Export
+          </button>
+          <button
             className="button small danger"
             onClick={() => window.confirm(`Delete “${trip.name}”? Your photos in ${provider.name} are not affected.`) && onDelete()}
           >
             Delete
           </button>
         </div>
+        {exportMessage && <p className="muted small">{exportMessage}</p>}
       </section>
 
       {trip.places.length === 0 ? (
