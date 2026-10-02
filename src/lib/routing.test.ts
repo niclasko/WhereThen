@@ -89,27 +89,27 @@ describe('open in maps', () => {
     visit('pis', t0 + 40 * H),
   ];
 
-  it('follows the trip in order, skipping flights, with Apple Maps on Apple devices', () => {
-    const links = mapsLinks(tripLegs(visits, places), places, 'ios');
+  it('follows the trip in order in Bing Maps, skipping flights', () => {
+    const links = mapsLinks(tripLegs(visits, places), places);
     expect(links).toHaveLength(1);
     expect(links[0].label).toBe('Rome → Pisa (4 stops)');
     const url = new URL(links[0].url);
-    expect(url.origin + url.pathname).toBe('https://maps.apple.com/directions');
-    expect(url.searchParams.get('source')).toBe('41.902800,12.496400');
-    expect(url.searchParams.getAll('waypoint')).toEqual(['41.898600,12.476900', '43.769600,11.255800']);
-    expect(url.searchParams.get('destination')).toBe('43.722800,10.401700');
+    expect(url.origin + url.pathname).toBe('https://www.bing.com/maps');
+    expect(url.searchParams.get('mode')).toBe('d');
+    const stops = url.searchParams.get('rtp')!.split('~');
+    expect(stops).toHaveLength(4);
+    expect(stops[0]).toBe('pos.41.902800_12.496400_Rome');
+    expect(stops[3]).toBe('pos.43.722800_10.401700_Pisa');
   });
 
-  it('uses Google Maps elsewhere and splits long routes into overlapping parts', () => {
-    const links = mapsLinks(tripLegs(visits, places), places, 'android'); // 5 stops per link on Android
-    expect(links).toHaveLength(1);
-    const many = Array.from({ length: 12 }, (_, i) => place(`p${i}`, 45 + i * 0.1, 9));
+  it('splits long routes into overlapping parts of at most 15 stops', () => {
+    const many = Array.from({ length: 20 }, (_, i) => place(`p_${i}`, 45 + i * 0.1, 9));
     const manyVisits = many.map((p, i) => visit(p.id, t0 + i * 2 * H));
-    const parts = mapsLinks(tripLegs(manyVisits, many), many, 'windows'); // 11 stops per link
-    expect(parts.map((p) => p.stops)).toEqual([11, 2]);
-    expect(parts[1].label).toBe('p10 → p11');
-    const url = new URL(parts[0].url);
-    expect(url.hostname).toBe('www.google.com');
-    expect(url.searchParams.get('waypoints')?.split('|')).toHaveLength(9);
+    const parts = mapsLinks(tripLegs(manyVisits, many), many);
+    expect(parts.map((p) => p.stops)).toEqual([15, 6]);
+    expect(parts[1].label).toBe('p_14 → p_19 (6 stops)');
+    const stops = new URL(parts[0].url).searchParams.get('rtp')!.split('~');
+    expect(stops).toHaveLength(15);
+    expect(stops[0]).toBe('pos.45.000000_9.000000_p 0');
   });
 });

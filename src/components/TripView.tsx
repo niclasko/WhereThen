@@ -4,7 +4,6 @@ import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, setP
 import { withSuggestedName } from '../lib/importer';
 import { formatDateSpan, formatDistance } from '../lib/format';
 import { mapsLinks, osrmRouter, setRoute, travelledKm, tripLegs } from '../lib/routing';
-import { currentPlatform } from '../providers/icloud';
 import { getProvider } from '../providers';
 import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
@@ -29,7 +28,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
   const [exportMessage, setExportMessage] = useState<string>();
   const visits = useMemo(() => computeVisits(trip.photos), [trip.photos]);
   const legs = useMemo(() => tripLegs(visits, trip.places, trip.routes), [visits, trip.places, trip.routes]);
-  const links = useMemo(() => mapsLinks(legs, trip.places, currentPlatform), [legs, trip.places]);
+  const links = useMemo(() => mapsLinks(legs, trip.places), [legs, trip.places]);
   const pendingLegs = legs.filter((l) => l.pending);
   const nextLeg = pendingLegs[0];
   const [routeError, setRouteError] = useState(false);
@@ -119,14 +118,14 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           </label>
           {links.length === 1 && (
             <a className="button small" href={links[0].url} target="_blank" rel="noopener noreferrer" title={`Directions: ${links[0].label}`}>
-              🧭 Open in Maps
+              🧭 Open in Bing Maps
             </a>
           )}
           {links.length > 1 && (
             <details className="maps-menu">
-              <summary className="button small">🧭 Open in Maps</summary>
+              <summary className="button small">🧭 Open in Bing Maps</summary>
               <div className="maps-menu-list">
-                <p className="muted small">The route in {links.length} parts (split at flights and at the maps app’s limit on stops):</p>
+                <p className="muted small">The route in {links.length} parts (split at flights and at Bing Maps’ limit of 15 stops):</p>
                 {links.map((l, i) => (
                   <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.currentTarget.closest('details')?.removeAttribute('open')}>
                     {i + 1}. {l.label}

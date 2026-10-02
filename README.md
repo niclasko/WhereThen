@@ -7,7 +7,7 @@
 - 🏷️ Get a suggested trip name, like *Summer Holiday 2026 – Italy*, or type your own
 - 🗺️ See your places on a map, numbered and coloured to match the timeline
 - 🚗 See the route between places, with distances and travel times
-- 🧭 Open the whole route in Apple Maps or Google Maps
+- 🧭 Open the whole route in Bing Maps
 - 🔒 Private: your photos are never uploaded, and there's no account
 
 ## Getting started

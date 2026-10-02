@@ -1,5 +1,4 @@
 import type { Place, SavedRoute, Trip, Visit } from '../types';
-import type { DevicePlatform } from '../providers/icloud';
 import { distanceKm } from './geo';
 import { placeName } from './trip';
 
@@ -180,7 +179,7 @@ export function setRoute(trip: Trip, key: string, route: SavedRoute | null): Tri
   return { ...trip, routes: { ...trip.routes, [key]: route } };
 }
 
-// --- "Open in Maps" links -----------------------------------------------------------------------------
+// --- "Open in Bing Maps" links ------------------------------------------------------------------------
 
 export interface MapsLink {
   label: string;
@@ -188,35 +187,25 @@ export interface MapsLink {
   stops: number;
 }
 
-/** Stops per link: Google Maps allows 9 waypoints (3 on phones); Apple Maps allows multi-stop routes of up to 15. */
-function maxStops(platform: DevicePlatform): number {
-  if (platform === 'ios' || platform === 'mac') return 15;
-  return platform === 'android' ? 5 : 11;
-}
+/** Bing Maps keeps the first 15 stops of a directions link and drops the rest. */
+const MAX_STOPS = 15;
 
-const coord = (p: Place) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`;
-
-function directionsUrl(stops: Place[], walking: boolean, platform: DevicePlatform): string {
-  const origin = stops[0];
-  const destination = stops[stops.length - 1];
-  const between = stops.slice(1, -1);
-  if (platform === 'ios' || platform === 'mac') {
-    const q = new URLSearchParams({ source: coord(origin), destination: coord(destination) });
-    for (const w of between) q.append('waypoint', coord(w));
-    q.set('mode', walking ? 'walking' : 'driving');
-    return `https://maps.apple.com/directions?${q}`;
-  }
-  const q = new URLSearchParams({ api: '1', origin: coord(origin), destination: coord(destination) });
-  if (between.length) q.set('waypoints', between.map(coord).join('|'));
-  q.set('travelmode', walking ? 'walking' : 'driving');
-  return `https://www.google.com/maps/dir/?${q}`;
+/** Bing Maps directions (`rtp=pos.lat_lon_name~…`); works on any device without a key. */
+function directionsUrl(stops: { place: Place; name: string }[], walking: boolean): string {
+  const rtp = stops
+    .map(({ place, name }) => {
+      const label = name.replace(/[_~]/g, ' ').trim();
+      return `pos.${place.lat.toFixed(6)}_${place.lon.toFixed(6)}_${encodeURIComponent(label)}`;
+    })
+    .join('~');
+  return `https://www.bing.com/maps?rtp=${rtp}&mode=${walking ? 'w' : 'd'}`;
 }
 
 /**
  * Directions links that follow the trip in order. The trip is split at flights (no point driving those)
  * and into parts that fit the maps app's limit on stops; each part starts where the previous one ended.
  */
-export function mapsLinks(legs: TripLeg[], places: Place[], platform: DevicePlatform): MapsLink[] {
+export function mapsLinks(legs: TripLeg[], places: Place[]): MapsLink[] {
   const index = new Map(places.map((p, i) => [p.id, i]));
   const name = (p: Place) => placeName(p, index.get(p.id));
   const groups: TripLeg[][] = [];
@@ -231,7 +220,7 @@ export function mapsLinks(legs: TripLeg[], places: Place[], platform: DevicePlat
   }
   if (current.length) groups.push(current);
 
-  const limit = maxStops(platform);
+  const limit = MAX_STOPS;
   const links: MapsLink[] = [];
   for (const group of groups) {
     const stops = [group[0].from, ...group.map((l) => l.to)];
@@ -241,7 +230,8 @@ export function mapsLinks(legs: TripLeg[], places: Place[], platform: DevicePlat
       const first = name(part[0]);
       const last = name(part[part.length - 1]);
       const label = part.length === 2 ? `${first} → ${last}` : `${first} → ${last} (${part.length} stops)`;
-      links.push({ label, url: directionsUrl(part, walking, platform), stops: part.length });
+      const named = part.map((place) => ({ place, name: name(place) }));
+      links.push({ label, url: directionsUrl(named, walking), stops: part.length });
     }
   }
   return links;
