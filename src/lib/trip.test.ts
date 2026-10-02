@@ -3,7 +3,7 @@ import type { PhotoRecord, Place } from '../types';
 import { assignPlaces, computeVisits, reclusterTrip } from './trip';
 import { suggestTripName, seasonFor } from './naming';
 import { labelFromNominatim, zoomForRadius } from './geocode';
-import { formatRange } from './format';
+import { formatDuration, formatRange } from './format';
 import { icloudProvider, detectPlatform, icloudPickerGuide } from '../providers/icloud';
 import { safeColor, safeImageSrc } from './nav';
 import { createTrip, addPhotosToTrip } from './importer';
@@ -153,6 +153,16 @@ describe('geocoding labels', () => {
 });
 
 describe('formatting', () => {
+  it('formats the length of a stay', () => {
+    const min = 60_000;
+    expect(formatDuration(0)).toBe('');
+    expect(formatDuration(40 * min)).toBe('40 min');
+    expect(formatDuration(200 * min)).toBe('3 h 20 min');
+    expect(formatDuration(120 * min)).toBe('2 h');
+    expect(formatDuration(25 * 60 * min)).toBe('1 day 1 h');
+    expect(formatDuration(48 * 60 * min)).toBe('2 days');
+  });
+
   it('formats ranges', () => {
     expect(formatRange('2026-07-14T10:05:00', '2026-07-14T16:40:00')).toMatch(/10:05–16:40$/);
     expect(formatRange('2026-07-14T10:05:00', '2026-07-16T09:12:00')).toMatch(/10:05 – .*09:12$/);

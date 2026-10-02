@@ -111,7 +111,13 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           <strong>Location</strong>, then add the photos again.
         </p>
       ) : (
-        <TripMap places={trip.places} visits={visits} selectedPlaceId={selectedPlaceId} onSelect={setSelectedPlaceId} />
+        <TripMap
+          places={trip.places}
+          visits={visits}
+          photos={trip.photos}
+          selectedPlaceId={selectedPlaceId}
+          onSelect={setSelectedPlaceId}
+        />
       )}
 
       <Timeline visits={visits} places={trip.places} selectedPlaceId={selectedPlaceId} onSelect={setSelectedPlaceId} />

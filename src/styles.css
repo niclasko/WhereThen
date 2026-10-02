@@ -179,3 +179,12 @@ footer.viewer-bar { padding-bottom: max(0.7rem, env(safe-area-inset-bottom)); fl
 .install-hint header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
 .install-hint p, .install-hint ol { margin: 0; }
 .install-hint ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.2rem; }
+
+/* Leaflet tooltips are always light, so use fixed colours rather than theme variables. */
+.leaflet-tooltip.map-tooltip { padding: 0.45rem 0.55rem; border-radius: 8px; color: #0f172a; white-space: normal; width: max-content; max-width: 280px; }
+.map-tip { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.8rem; line-height: 1.35; }
+.map-tip img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; flex: none; }
+.map-tip strong { font-size: 0.875rem; }
+.map-tip .muted { color: #64748b; }
+.map-tip ul { margin: 0.2rem 0; padding: 0; list-style: none; }
+.map-tip li .muted { white-space: nowrap; }

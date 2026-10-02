@@ -4,7 +4,7 @@
 
 - 📷 Pick a set of photos from your phone (iCloud Photos to start with)
 - 🏷️ Get a suggested trip name (e.g. *Summer Holiday 2026 – Italy*, *Weekend in Paris*), or type your own
-- 🗺️ See numbered, colour-coded places on a map, connected in the order you visited them
+- 🗺️ See numbered, colour-coded places on a map, connected in the order you visited them. Hover over (or tap) a place to see when you were there, how long you stayed and a photo preview
 - 🕒 See a timeline whose colours and numbers match the map, grouped by day
 - 🔒 Personal and browser-only: **metadata** (capture time, GPS position, file name, camera), a **reference** and a small **preview** of each photo are stored in your browser's IndexedDB. There is no account or server, and photos are never uploaded.
 

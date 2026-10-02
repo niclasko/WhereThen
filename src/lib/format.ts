@@ -51,3 +51,15 @@ export function formatDateSpan(startLocal: string, endLocal: string): string {
   if (startLocal.slice(0, 10) === endLocal.slice(0, 10)) return formatDay(startLocal, true);
   return `${formatDay(startLocal, startLocal.slice(0, 4) !== endLocal.slice(0, 4))} – ${formatDay(endLocal, true)}`;
 }
+
+/** Compact length of a stay: "40 min", "3 h 20 min", "2 days 3 h". Empty for a single moment. */
+export function formatDuration(ms: number): string {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 1) return '';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
+  const days = Math.floor(hours / 24);
+  const unit = days === 1 ? 'day' : 'days';
+  return hours % 24 ? `${days} ${unit} ${hours % 24} h` : `${days} ${unit}`;
+}
