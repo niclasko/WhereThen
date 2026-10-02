@@ -23,12 +23,36 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = picking || !!progress;
 
-  // Browsers fire "cancel" when the picker is closed without choosing anything.
+  // Set while the system file/photo picker is open. Browsers don't report the "Add"/✓ tap itself, so the
+  // waiting indicator is shown only once the page gets focus back (picker closed), not while picking.
+  const pickerOpenedAt = useRef<number>(undefined);
+  const waitTimer = useRef<number>(undefined);
+
   useEffect(() => {
     const input = fileInputRef.current;
-    const onCancel = () => setPicking(false);
+    // Browsers fire "cancel" when the picker is closed without choosing anything.
+    const onCancel = () => {
+      pickerOpenedAt.current = undefined;
+      setPicking(false);
+    };
+    const onPickerClosed = () => {
+      const openedAt = pickerOpenedAt.current;
+      if (openedAt === undefined || document.visibilityState !== 'visible' || Date.now() - openedAt < 500) return;
+      // Give "change"/"cancel" a moment to arrive first, so a cancelled picker doesn't flash the indicator.
+      window.clearTimeout(waitTimer.current);
+      waitTimer.current = window.setTimeout(() => {
+        if (pickerOpenedAt.current !== undefined) setPicking(true);
+      }, 400);
+    };
     input?.addEventListener('cancel', onCancel);
-    return () => input?.removeEventListener('cancel', onCancel);
+    window.addEventListener('focus', onPickerClosed);
+    document.addEventListener('visibilitychange', onPickerClosed);
+    return () => {
+      input?.removeEventListener('cancel', onCancel);
+      window.removeEventListener('focus', onPickerClosed);
+      document.removeEventListener('visibilitychange', onPickerClosed);
+      window.clearTimeout(waitTimer.current);
+    };
   }, [provider]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -64,6 +88,7 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
 
   function cancelImport() {
     abortRef.current?.abort();
+    pickerOpenedAt.current = undefined;
     setPicking(false);
   }
 
@@ -137,9 +162,10 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
               disabled={!!progress}
               onClick={() => {
                 setError(undefined);
-                setPicking(true);
+                pickerOpenedAt.current = Date.now();
               }}
               onChange={(e) => {
+                pickerOpenedAt.current = undefined;
                 void onFiles(e.target.files);
                 e.target.value = '';
               }}

@@ -33,7 +33,7 @@ The button label and instructions adapt to the device, so each device only sees 
 - **Place names** come from OpenStreetMap Nominatim (rate-limited to 1 request/second and cached locally). You can rename any place.
 - **Add photos** to an existing trip. Duplicates are skipped, and existing places and names are kept.
 - **Photo previews** (always on): 640 px JPEG previews of about 10–40 KB each are made on your device when you import and stored with the trip in this browser's IndexedDB. They are never uploaded. Photos the browser can't decode (e.g. HEIC on Windows) show a 📷 placeholder. To add previews to an older trip, use "+ Add photos" and choose the same photos again.
-- **Import progress**: a progress bar with photo count, located count, time remaining and Cancel. On iPhone, photos stored only in iCloud are downloaded by iOS before the page receives them. That phase can't be measured, so a "Waiting for your photos…" indicator is shown first.
+- **Import progress**: a progress bar with photo count, located count, time remaining and Cancel. On iPhone, photos stored only in iCloud are downloaded by iOS before the page receives them. That phase can't be measured, so a "Waiting for your photos…" indicator is shown once the picker closes (not while you're still choosing).
 - **Export / import** trips (including previews) as JSON to back up or move them between devices.
 
 ## Where your trips are stored
