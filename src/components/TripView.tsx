@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { GeocodeStatus, Trip } from '../types';
-import { computeVisits, DETAIL_LEVELS, reclusterTrip, byTime } from '../lib/trip';
+import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, byTime } from '../lib/trip';
 import { withSuggestedName } from '../lib/importer';
 import { formatDateSpan } from '../lib/format';
 import { getProvider } from '../providers';
@@ -26,6 +26,12 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
   const times = useMemo(() => trip.photos.filter((p) => p.localTime).sort(byTime), [trip.photos]);
   const unlocated = trip.photos.filter((p) => p.lat === null).length;
   const selectedPlace = trip.places.find((p) => p.id === selectedPlaceId);
+  const removePhotos = (ids: string[]) => onChange((t) => withSuggestedName(removePhotosFromTrip(t, ids)));
+  const removeUnlocated = () => {
+    const what = unlocated === 1 ? 'the photo' : `the ${unlocated} photos`;
+    if (!window.confirm(`Remove ${what} without a location from the trip? The originals are not affected.`)) return;
+    void removePhotos(trip.photos.filter((p) => p.lat === null).map((p) => p.id));
+  };
 
   const commitName = (value: string) => {
     setDraftName(undefined);
@@ -105,7 +111,9 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
         {exportMessage && <p className="muted small">{exportMessage}</p>}
       </section>
 
-      {trip.places.length === 0 ? (
+      {trip.photos.length === 0 ? (
+        <p className="notice">This trip has no photos. Use “+ Add photos” to add some.</p>
+      ) : trip.places.length === 0 ? (
         <p className="notice">
           None of these photos have a GPS location. On iPhone, tap <strong>Options</strong> in the photo picker and turn on{' '}
           <strong>Location</strong>, then add the photos again.
@@ -136,13 +144,17 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
               }),
             )
           }
+          onRemovePhotos={(ids) => void removePhotos(ids)}
           onClose={() => setSelectedPlaceId(undefined)}
         />
       )}
 
-      {unlocated > 0 && trip.places.length > 0 && (
+      {unlocated > 0 && (
         <p className="muted small">
-          {unlocated} photo{unlocated === 1 ? '' : 's'} without GPS location {unlocated === 1 ? 'is' : 'are'} not shown on the map.
+          {unlocated} photo{unlocated === 1 ? '' : 's'} without GPS location {unlocated === 1 ? 'is' : 'are'} not shown on the map.{' '}
+          <button className="link" onClick={removeUnlocated}>
+            Remove {unlocated === 1 ? 'it' : 'them'} from the trip
+          </button>
         </p>
       )}
 

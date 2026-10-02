@@ -10,15 +10,16 @@ interface Props {
   index: number;
   placeName: string;
   onIndex: (index: number) => void;
+  onRemove: (photoId: string) => void;
   onClose: () => void;
 }
 
 /** Full-screen preview of a photo, using the preview kept in this browser. */
-export function PhotoViewer({ trip, photos, index, placeName, onIndex, onClose }: Props) {
+export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove, onClose }: Props) {
   const provider = getProvider(trip.providerId);
   const photo = photos[index];
   const src = safeImageSrc(photo.thumbnail);
-  const url = provider.getViewUrl(photo.ref);
+  const url = provider.getViewUrl?.(photo.ref);
   const when = photo.localTime ? formatDateTime(photo.localTime) : undefined;
   const hasPrev = index > 0;
   const hasNext = index < photos.length - 1;
@@ -100,13 +101,19 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onClose }
           <span className="viewer-file"> · {photo.ref.fileName}</span>
         </span>
         {url && (
-          <span className="viewer-find">
-            <a href={url} target="_blank" rel="noopener noreferrer">
-              {provider.viewLabel} ↗
-            </a>
-            {when && <small>opens your library, look for {when}</small>}
-          </span>
+          <a className="viewer-find" href={url} target="_blank" rel="noopener noreferrer">
+            {provider.viewLabel ?? 'Open original'} ↗
+          </a>
         )}
+        <button
+          className="viewer-remove"
+          onClick={() =>
+            window.confirm('Remove this photo from the trip? The original in your photo library is not affected.') &&
+            onRemove(photo.id)
+          }
+        >
+          Remove from trip
+        </button>
       </footer>
     </div>
   );

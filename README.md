@@ -23,15 +23,16 @@
 
 The button label and instructions adapt to the device, so each device only sees its own steps.
 
-**Viewing photos**: tap a photo to see its preview full screen (swipe or use the arrow keys to browse). Apple has no web link to a single photo in iCloud Photos, so "Find in iCloud Photos" opens the library and tells you the date and time to look for.
+**Viewing photos**: tap a photo to see its preview full screen (swipe or use the arrow keys to browse), with its date, time and file name. Apple has no web link to a single photo in iCloud Photos, so there's no per-photo iCloud link.
 
 > Apple offers no public web API for iCloud Photos, so the app can't sign in to iCloud itself. It relies on the system photo picker, which reads from your iCloud library. iCloud Shared Album links aren't used as a source because Apple removes GPS data from shared albums. A reference is the file name plus a size-based identifier, alongside the capture time. Providers with a picker API (Google Photos, OneDrive, …) can implement `pick()` to connect to the cloud account directly and store real asset IDs and deep links. See below.
 
 ## Features
 
-- **Detail level**: group photos into *Spots* (300 m), *Neighbourhoods* (2 km), *Towns* (10 km, default) or *Regions* (50 km).
+- **Detail level**: group photos into *Spots* (300 m), *Neighbourhoods* (2 km), *Towns* (10 km, default) or *Regions* (50 km). Each level's places and names (including your renames) are saved with the trip, so switching back is instant and needs no new lookups.
 - **Place names** come from OpenStreetMap Nominatim (rate-limited to 1 request/second and cached locally). You can rename any place.
-- **Add photos** to an existing trip. Duplicates are skipped, and existing places and names are kept.
+- **Add photos** to an existing trip. Adding the same photos again changes nothing: a photo is recognised by its file name and size, or by its name and capture time (so the HEIC and JPEG versions of a photo count as the same photo). Existing places and names are kept.
+- **Remove photos**: open a place and tap **Select photos**, or use **Remove from trip** in the photo viewer. Photos without a location can be removed from the note below the timeline. The originals are never touched.
 - **Photo previews** (always on): 640 px JPEG previews of about 10–40 KB each are made on your device when you import and stored with the trip in this browser's IndexedDB. They are never uploaded. Photos the browser can't decode (e.g. HEIC on Windows) show a 📷 placeholder. To add previews to an older trip, use "+ Add photos" and choose the same photos again.
 - **Import progress**: a progress bar with photo count, located count, time remaining and Cancel. On iPhone, photos stored only in iCloud are downloaded by iOS before the page receives them. That phase can't be measured, so a "Waiting for your photos…" indicator with an elapsed timer is shown once the picker closes (not while you're still choosing). iOS prepares the selected photos one by one and hands them over only when all are ready, so for hundreds of iCloud-only photos it's faster to import about 50 at a time and add the rest with "+ Add photos".
 - **Export a trip** (⬇ Export): downloads the whole trip (map, timeline, place names and previews) as one `.wherethen.json` file. On iPhone it goes to Files (iCloud Drive › Downloads by default). Do what you like with it: keep it as a backup, or send it via Messages, Mail or AirDrop. Anyone can open it in WhereThen with **Import trip file…** to get their own copy. The file contains photo times, positions, file names and previews (not the original photos), so only send it to people you'd show the photos to. A trip of about 300 photos is roughly 10 MB.
@@ -87,6 +88,6 @@ Implement `PhotoProvider` (`src/providers/types.ts`) and add it to the registry 
 - File-picker based services implement `fromFiles(files)` and return a `PhotoRef` per file.
 - API-based services (e.g. the Google Photos Picker API or Microsoft Graph for OneDrive) implement `pick()`. It can return `metadata` (time, GPS) directly from the API, and a `file` blob only when EXIF needs to be read.
 - `pickLabel` is the text of the picker button (e.g. "Choose from Google Photos").
-- `getViewUrl(ref)` returns a safe `https` link to the original photo (or the library, if the service has no per-photo links), and `viewLabel` is its link text.
+- Optional `getViewUrl(ref)` returns a safe `https` link that opens that exact photo, and `viewLabel` is its link text. Leave it out if the service has no per-photo links (as with iCloud).
 
 The rest of the app (clustering, timeline, map, storage) is provider-agnostic.

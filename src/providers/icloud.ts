@@ -1,7 +1,5 @@
 import type { PhotoProvider } from './types';
 
-const ICLOUD_PHOTOS_URL = 'https://www.icloud.com/photos/';
-
 export type DevicePlatform = 'ios' | 'mac' | 'windows' | 'android' | 'other';
 
 export function detectPlatform(userAgent: string, maxTouchPoints = 0): DevicePlatform {
@@ -76,8 +74,7 @@ const guide = icloudPickerGuide(currentPlatform);
 
 /**
  * iCloud Photos has no public web API, so photos are selected with the system photo picker.
- * We keep a reference (file name + size, plus capture time in the record) and link back to
- * iCloud Photos.
+ * We keep a reference (file name + size, plus capture time in the record).
  */
 export const icloudProvider: PhotoProvider = {
   id: 'icloud',
@@ -96,7 +93,5 @@ export const icloudProvider: PhotoProvider = {
       file,
     }));
   },
-  // Apple has no link to a single photo in iCloud Photos, so this opens the library.
-  getViewUrl: () => ICLOUD_PHOTOS_URL,
-  viewLabel: 'Find in iCloud Photos',
+  // No getViewUrl: Apple has no web link to a single photo in iCloud Photos.
 };

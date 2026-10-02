@@ -103,8 +103,7 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
   async function save() {
     if (!records) return;
     if (existingTrip) {
-      const { trip } = addPhotosToTrip(existingTrip, records);
-      await onDone(trip);
+      await onDone((addResult ?? addPhotosToTrip(existingTrip, records)).trip);
     } else {
       const suggestion = preview?.suggestedName ?? '';
       const trip = createTrip(providerId, records, name.trim() === suggestion ? undefined : name);
@@ -114,12 +113,12 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
 
   const located = records?.filter((r) => r.lat !== null).length ?? 0;
   const times = records?.map((r) => r.localTime).filter((t): t is string => !!t).sort() ?? [];
-  const duplicates = existingTrip && records
-    ? records.filter((r) => existingTrip.photos.some((p) => p.ref.externalId === r.ref.externalId)).length
-    : 0;
-  const newPreviews = existingTrip && records
-    ? existingTrip.photos.filter((p) => !p.thumbnail && records.some((r) => r.thumbnail && r.ref.externalId === p.ref.externalId)).length
-    : 0;
+  const addResult = useMemo(
+    () => (existingTrip && records ? addPhotosToTrip(existingTrip, records) : undefined),
+    [existingTrip, records],
+  );
+  const duplicates = addResult && records ? records.length - addResult.added : 0;
+  const newPreviews = addResult?.previews ?? 0;
 
   return (
     <div className="import card">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PhotoRecord, Place } from '../types';
-import { assignPlaces, computeVisits, reclusterTrip } from './trip';
+import { assignPlaces, computeVisits, reclusterTrip, removePhotosFromTrip, setPlaceLabel } from './trip';
 import { suggestTripName, seasonFor } from './naming';
 import { labelFromNominatim, zoomForRadius } from './geocode';
 import { formatDuration, formatRange } from './format';
@@ -81,6 +81,57 @@ describe('clustering and visits', () => {
   it('reclusters a trip', () => {
     const trip = createTrip('icloud', photos);
     expect(reclusterTrip(trip, 500).places).toHaveLength(1);
+  });
+
+  it('restores looked-up and custom place names when switching back to a level of detail', () => {
+    const trip = createTrip('icloud', photos);
+    const named = {
+      ...trip,
+      places: trip.places.map((p, i) => ({ ...p, label: { name: `L${i}` }, customName: i === 0 ? 'Our hotel' : undefined })),
+    };
+    const coarse = reclusterTrip(named, 50);
+    expect(coarse.places.every((p) => !p.label)).toBe(true);
+    const back = reclusterTrip(coarse, trip.clusterRadiusKm);
+    expect(back.places.map((p) => p.label?.name)).toEqual(named.places.map((p) => p.label?.name));
+    expect(back.places[0].customName).toBe('Our hotel');
+    expect(back.photos.map((p) => p.placeId)).toEqual(named.photos.map((p) => p.placeId));
+  });
+
+  it('keeps names that arrive after switching to another level of detail', () => {
+    const trip = createTrip('icloud', photos);
+    const placeId = trip.places[0].id;
+    const coarse = setPlaceLabel(reclusterTrip(trip, 50), placeId, { name: 'Rome' });
+    expect(reclusterTrip(coarse, trip.clusterRadiusKm).places.find((p) => p.id === placeId)?.label?.name).toBe('Rome');
+  });
+
+  it('assigns photos added since a level was last used when restoring it', () => {
+    const trip = reclusterTrip(createTrip('icloud', photos.slice(0, 2)), 50);
+    const { trip: more } = addPhotosToTrip(trip, [photo('2026-07-20T10:00:00', ...FLORENCE)]);
+    const back = reclusterTrip(more, 10);
+    expect(back.places).toHaveLength(2);
+    expect(back.photos.every((p) => p.placeId)).toBe(true);
+  });
+
+  it('removes photos and drops places left without photos', () => {
+    const trip = createTrip('icloud', photos);
+    const florence = trip.photos.filter((p) => p.lat === FLORENCE[0]).map((p) => p.id);
+    const next = removePhotosFromTrip(trip, florence);
+    expect(next.photos).toHaveLength(photos.length - 2);
+    expect(next.places).toHaveLength(trip.places.length - 1);
+    expect(computeVisits(next.photos)).toHaveLength(1);
+  });
+
+  it('is idempotent when the same photos are added again, also in another format', () => {
+    const trip = createTrip('icloud', photos.slice(0, 3));
+    const twice = addPhotosToTrip(addPhotosToTrip(trip, photos).trip, photos);
+    expect(twice.added).toBe(0);
+    expect(twice.trip.photos).toHaveLength(photos.length);
+    const asJpeg = {
+      ...photos[0],
+      id: 'jpeg',
+      ref: { ...photos[0].ref, externalId: photos[0].ref.fileName.replace('.HEIC', '.JPG') + ':999', fileName: photos[0].ref.fileName.replace('.HEIC', '.JPG') },
+    };
+    expect(addPhotosToTrip(trip, [asJpeg]).added).toBe(0);
   });
 });
 
@@ -170,10 +221,8 @@ describe('formatting', () => {
 });
 
 describe('iCloud provider and sanitising', () => {
-  it('links to iCloud Photos', () => {
-    const ref = { providerId: 'icloud', externalId: 'a', fileName: 'a.jpg' };
-    expect(icloudProvider.getViewUrl(ref)).toBe('https://www.icloud.com/photos/');
-    expect(icloudProvider.viewLabel).toBe('Find in iCloud Photos');
+  it('has no per-photo link, since iCloud Photos has none', () => {
+    expect(icloudProvider.getViewUrl).toBeUndefined();
   });
 
   it('detects the platform for picker guidance', () => {

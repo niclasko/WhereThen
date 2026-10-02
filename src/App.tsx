@@ -3,6 +3,7 @@ import type { GeocodeStatus, Trip } from './types';
 import { deleteTrip, listTrips, parseTripExport, requestPersistentStorage, saveTrip } from './lib/storage';
 import { nominatimGeocoder } from './lib/geocode';
 import { withSuggestedName } from './lib/importer';
+import { setPlaceLabel } from './lib/trip';
 import { TripView } from './components/TripView';
 import { ImportView } from './components/ImportView';
 import { TripList } from './components/TripList';
@@ -71,14 +72,9 @@ export default function App() {
           try {
             const label = await nominatimGeocoder.reverse(pending.lat, pending.lon, trip.clusterRadiusKm);
             await updateTrip(id, (t) =>
-              withSuggestedName({
-                ...t,
-                places: t.places.map((p) =>
-                  p.id === pending.id
-                    ? { ...p, label: label ?? { name: `${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}` } }
-                    : p,
-                ),
-              }),
+              withSuggestedName(
+                setPlaceLabel(t, pending.id, label ?? { name: `${pending.lat.toFixed(3)}, ${pending.lon.toFixed(3)}` }),
+              ),
             );
           } catch {
             failedPlaces.current.add(pending.id);

@@ -1,4 +1,4 @@
-import type { PhotoRecord, Place, Trip, Visit } from '../types';
+import type { PhotoRecord, Place, PlaceLabel, Trip, Visit } from '../types';
 import { distanceKm, newId } from './geo';
 
 const PALETTE = [
@@ -93,11 +93,36 @@ function recolorByFirstVisit(places: Place[], photos: PhotoRecord[]): Place[] {
     .map((p, i) => ({ ...p, color: colorForIndex(i) }));
 }
 
-/** Rebuilds all places from scratch, e.g. after changing the level of detail. */
+/**
+ * Switches the level of detail. The current places are saved in the trip, and a level that was used
+ * before is restored with its place names, so no lookups are repeated. Photos added since then are
+ * assigned to the nearest saved place (or a new one), and places whose photos were removed are dropped.
+ */
 export function reclusterTrip(trip: Trip, radiusKm: number): Trip {
-  const cleared = trip.photos.map((p) => ({ ...p, placeId: undefined }));
-  const { photos, places } = assignPlaces(cleared, [], radiusKm);
-  return { ...trip, photos, places, clusterRadiusKm: radiusKm, updatedAt: Date.now() };
+  const placeIds: Record<string, string> = {};
+  for (const p of trip.photos) if (p.placeId) placeIds[p.id] = p.placeId;
+  const layouts = { ...trip.layouts, [String(trip.clusterRadiusKm)]: { places: trip.places, placeIds } };
+  const saved = layouts[String(radiusKm)];
+  const usable = !!saved && Array.isArray(saved.places) && !!saved.placeIds && typeof saved.placeIds === 'object';
+  const start = trip.photos.map((p) => ({ ...p, placeId: usable ? saved.placeIds[p.id] : undefined }));
+  const { photos, places } = assignPlaces(start, usable ? saved.places : [], radiusKm);
+  return { ...trip, photos, places, layouts, clusterRadiusKm: radiusKm, updatedAt: Date.now() };
+}
+
+/** Sets a place's looked-up name, also in saved levels of detail (the user may have switched level meanwhile). */
+export function setPlaceLabel(trip: Trip, placeId: string, label: PlaceLabel): Trip {
+  const apply = (places: Place[]) => places.map((p) => (p.id === placeId ? { ...p, label } : p));
+  const layouts = trip.layouts
+    ? Object.fromEntries(Object.entries(trip.layouts).map(([k, v]) => [k, { ...v, places: apply(v.places) }]))
+    : undefined;
+  return { ...trip, places: apply(trip.places), ...(layouts && { layouts }) };
+}
+
+/** Removes photos from the trip (the originals are untouched) and drops places left without photos. */
+export function removePhotosFromTrip(trip: Trip, photoIds: Iterable<string>): Trip {
+  const remove = new Set(photoIds);
+  const photos = trip.photos.filter((p) => !remove.has(p.id));
+  return { ...trip, photos, places: recolorByFirstVisit(trip.places, photos), updatedAt: Date.now() };
 }
 
 /** Consecutive (in time) photos at the same place form one visit. */

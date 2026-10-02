@@ -145,6 +145,13 @@ input:not([type]), input[type='text'], select {
 .photo img, .photo-placeholder { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--bg); }
 .photo-placeholder { display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 1px solid var(--border); }
 .photo .file { font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-tools { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; min-height: 2rem; }
+.photo-grid.selecting .photo { cursor: pointer; position: relative; }
+.photo-grid.selecting .photo img, .photo-grid.selecting .photo-placeholder { opacity: 0.75; }
+.photo.selected img, .photo.selected .photo-placeholder { opacity: 1 !important; outline: 3px solid var(--accent); outline-offset: -3px; }
+.photo-check { position: absolute; top: 6px; right: 6px; z-index: 1; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid #fff; background: rgba(0, 0, 0, 0.35); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+.photo.selected .photo-check { background: var(--accent); }
+.viewer-remove { background: none; border: 1px solid #475569; border-radius: 6px; color: #fca5a5; font: inherit; padding: 0.3rem 0.7rem; cursor: pointer; }
 
 
 .progress-panel { display: flex; flex-direction: column; gap: 0.45rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem; background: var(--bg); }
@@ -163,8 +170,7 @@ input:not([type]), input[type='text'], select {
 footer.viewer-bar { padding-bottom: max(0.7rem, env(safe-area-inset-bottom)); flex-wrap: wrap; }
 .viewer-bar a { color: #5eead4; font-weight: 600; }
 .viewer-file { color: #cbd5e1; }
-.viewer-find { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
-.viewer-find small { color: #94a3b8; }
+.viewer-find { color: #93c5fd; }
 .viewer-close { background: none; border: 0; color: inherit; font-size: 1.4rem; cursor: pointer; padding: 0.2rem 0.5rem; }
 .viewer-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 0.5rem; }
 .viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }

@@ -54,6 +54,14 @@ export interface Trip {
   updatedAt: number;
   photos: PhotoRecord[];
   places: Place[];
+  /** Places (with looked-up and custom names) per level of detail, keyed by radius, so switching back needs no lookups. */
+  layouts?: Record<string, SavedLayout>;
+}
+
+export interface SavedLayout {
+  places: Place[];
+  /** Photo id → place id. */
+  placeIds: Record<string, string>;
 }
 
 export type GeocodeStatus = 'idle' | 'working' | 'error';

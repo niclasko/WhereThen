@@ -81,23 +81,46 @@ export function createTrip(providerId: string, photos: PhotoRecord[], name?: str
 }
 
 /**
- * Adds photos to an existing trip, skipping ones that are already referenced. Previews of
- * already-referenced photos are filled in if the trip didn't have them yet.
+ * Keys that identify the same photo across imports: the provider's id (file name + size for iCloud)
+ * and, for photos with a camera timestamp, the file name without extension plus capture time. The
+ * second key catches the same photo delivered in another format (e.g. HEIC vs JPEG, different size).
+ */
+function photoKeys(p: PhotoRecord): string[] {
+  const keys = [`id|${p.ref.providerId}|${p.ref.externalId}`];
+  if (p.localTime && p.timeSource === 'exif') {
+    const stem = p.ref.fileName.replace(/\.[^.]+$/, '').toLowerCase();
+    keys.push(`taken|${p.ref.providerId}|${stem}|${p.localTime}`);
+  }
+  return keys;
+}
+
+/**
+ * Adds photos to an existing trip, skipping ones that are already in it (so adding the same photos
+ * again changes nothing). Previews of already-included photos are filled in if they were missing.
  */
 export function addPhotosToTrip(trip: Trip, newPhotos: PhotoRecord[]): { trip: Trip; added: number; previews: number } {
-  const key = (p: PhotoRecord) => `${p.ref.providerId}|${p.ref.externalId}`;
-  const incoming = new Map(newPhotos.map((p) => [key(p), p]));
-  let previews = 0;
-  const existing = trip.photos.map((p) => {
-    const thumbnail = p.thumbnail ? undefined : incoming.get(key(p))?.thumbnail;
-    if (!thumbnail) return p;
-    previews++;
-    return { ...p, thumbnail };
-  });
-  const known = new Set(trip.photos.map(key));
-  const fresh = newPhotos.filter((p) => !known.has(key(p)));
+  const byKey = new Map<string, PhotoRecord>();
+  const remember = (p: PhotoRecord) => photoKeys(p).forEach((k) => byKey.set(k, p));
+  trip.photos.forEach(remember);
+
+  const thumbnails = new Map<string, string>();
+  const fresh: PhotoRecord[] = [];
+  for (const photo of newPhotos) {
+    const match = photoKeys(photo).map((k) => byKey.get(k)).find(Boolean);
+    if (!match) {
+      fresh.push(photo);
+      remember(photo);
+    } else if (!match.thumbnail && photo.thumbnail && !thumbnails.has(match.id)) {
+      thumbnails.set(match.id, photo.thumbnail);
+    }
+  }
+  const existing = trip.photos.map((p) => (thumbnails.has(p.id) ? { ...p, thumbnail: thumbnails.get(p.id) } : p));
   const { photos, places } = assignPlaces([...existing, ...fresh], trip.places, trip.clusterRadiusKm);
-  return { trip: withSuggestedName({ ...trip, photos, places, updatedAt: Date.now() }), added: fresh.length, previews };
+  return {
+    trip: withSuggestedName({ ...trip, photos, places, updatedAt: Date.now() }),
+    added: fresh.length,
+    previews: thumbnails.size,
+  };
 }
 
 /** Recomputes the suggested name and applies it unless the user chose their own. */

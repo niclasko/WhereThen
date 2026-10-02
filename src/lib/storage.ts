@@ -65,6 +65,9 @@ export function parseTripExport(text: string): Trip[] {
       throw new Error('Export file is malformed');
     }
     if (!providers.some((p) => p.id === t.providerId)) throw new Error(`Unsupported photo source: ${t.providerId}`);
+    if (t.layouts !== undefined && (typeof t.layouts !== 'object' || t.layouts === null || Array.isArray(t.layouts))) {
+      delete t.layouts;
+    }
   }
   return data.trips;
 }

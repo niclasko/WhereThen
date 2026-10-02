@@ -29,8 +29,8 @@ export interface PhotoProvider {
   fileAccept?: string;
   fromFiles?(files: File[]): Promise<ProviderPhoto[]>;
   pick?(): Promise<ProviderPhoto[]>;
-  /** A safe https URL where the user can find the original photo, if one is available. */
-  getViewUrl(ref: PhotoRef): string | undefined;
-  /** Link text for `getViewUrl`. */
-  viewLabel: string;
+  /** A safe https URL that opens this exact photo. Omit when the service has no per-photo links. */
+  getViewUrl?(ref: PhotoRef): string | undefined;
+  /** Link text for `getViewUrl`, e.g. "Open in Google Photos". */
+  viewLabel?: string;
 }

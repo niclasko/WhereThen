@@ -11,15 +11,41 @@ interface Props {
   index: number;
   visits: Visit[];
   onRename: (name: string) => void;
+  onRemovePhotos: (photoIds: string[]) => void;
   onClose: () => void;
 }
 
-export function PlaceDetails({ trip, place, index, visits, onRename, onClose }: Props) {
+export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePhotos, onClose }: Props) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState<number>();
-  useEffect(() => setViewing(undefined), [place.id]);
+  const [selected, setSelected] = useState<Set<string>>();
+  useEffect(() => {
+    setViewing(undefined);
+    setSelected(undefined);
+  }, [place.id]);
   const photos = trip.photos.filter((p) => p.placeId === place.id).sort(byTime);
   const name = placeName(place, index);
+  // After removing the last photo in the viewer, show the one before it.
+  useEffect(() => {
+    if (viewing !== undefined && viewing >= photos.length) setViewing(photos.length ? photos.length - 1 : undefined);
+  }, [viewing, photos.length]);
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const removeSelected = () => {
+    const ids = photos.filter((p) => selected?.has(p.id)).map((p) => p.id);
+    if (!ids.length) return;
+    const what = ids.length === 1 ? 'this photo' : `these ${ids.length} photos`;
+    if (!window.confirm(`Remove ${what} from the trip? The originals in your photo library are not affected.`)) return;
+    setSelected(undefined);
+    onRemovePhotos(ids);
+  };
 
   return (
     <section className="card place-details" style={{ borderTopColor: safeColor(place.color) }}>
@@ -61,12 +87,40 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onClose }: 
           </li>
         ))}
       </ul>
-      <ul className="photo-grid">
+      <div className="photo-tools">
+        {selected ? (
+          <>
+            <span className="muted small">{selected.size} selected</span>
+            <button className="button small danger" disabled={!selected.size} onClick={removeSelected}>
+              Remove from trip
+            </button>
+            <button className="link" onClick={() => setSelected(undefined)}>
+              Done
+            </button>
+          </>
+        ) : (
+          <button className="link" onClick={() => setSelected(new Set())}>
+            Select photos
+          </button>
+        )}
+      </div>
+      <ul className={`photo-grid ${selected ? 'selecting' : ''}`}>
         {photos.map((photo, i) => {
           const thumb = safeImageSrc(photo.thumbnail);
+          const isSelected = !!selected?.has(photo.id);
           return (
             <li key={photo.id}>
-              <button className="photo" onClick={() => setViewing(i)} aria-label={`View ${photo.ref.fileName}`}>
+              <button
+                className={`photo ${isSelected ? 'selected' : ''}`}
+                onClick={() => (selected ? toggle(photo.id) : setViewing(i))}
+                aria-label={`${selected ? 'Select' : 'View'} ${photo.ref.fileName}`}
+                aria-pressed={selected ? isSelected : undefined}
+              >
+                {selected && (
+                  <span className="photo-check" aria-hidden>
+                    {isSelected ? '✓' : ''}
+                  </span>
+                )}
                 {thumb ? <img src={thumb} alt="" loading="lazy" /> : <div className="photo-placeholder">📷</div>}
                 <span className="file" title={photo.ref.fileName}>
                   {photo.ref.fileName}
@@ -89,6 +143,7 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onClose }: 
           index={viewing}
           placeName={name}
           onIndex={setViewing}
+          onRemove={(id) => onRemovePhotos([id])}
           onClose={() => setViewing(undefined)}
         />
       )}
