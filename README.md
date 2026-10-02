@@ -2,6 +2,7 @@
 
 **Where were you, and when?** WhereThen turns your holiday photos into a map of the places you visited, with a colour-coded timeline underneath.
 
+👉 **[Open WhereThen](https://niclasko.github.io/WhereThen/)**: it runs in your browser, with nothing to install.
 - 📷 Pick the trip's photos from your phone (iCloud Photos to start with)
 - 🏷️ Get a suggested trip name, like *Summer Holiday 2026 – Italy*, or type your own
 - 🗺️ See your places on a map, numbered and coloured to match the timeline
@@ -44,4 +45,4 @@ npm test        # run tests
 npm run build   # production build
 ```
 
-Pushing to `main` deploys to GitHub Pages. New photo services (Google Photos, OneDrive, …) can be added by implementing `PhotoProvider` in `src/providers/`.
+Pushing to `main` deploys to [GitHub Pages](https://niclasko.github.io/WhereThen/). New photo services (Google Photos, OneDrive, …) can be added by implementing `PhotoProvider` in `src/providers/`.
