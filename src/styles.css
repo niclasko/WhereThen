@@ -174,3 +174,8 @@ footer.viewer-bar { padding-bottom: max(0.7rem, env(safe-area-inset-bottom)); fl
 .viewer-nav.prev { left: 0.5rem; }
 .viewer-nav.next { right: 0.5rem; }
 .viewer-nav:hover { background: rgba(255, 255, 255, 0.28); }
+
+.install-hint { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; border-left: 4px solid var(--accent); }
+.install-hint header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+.install-hint p, .install-hint ol { margin: 0; }
+.install-hint ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.2rem; }

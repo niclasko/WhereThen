@@ -39,7 +39,7 @@ The button label and instructions adapt to the device, so each device only sees 
 
 ## Where your trips are stored
 
-Everything lives in this browser on this device. Other browsers and devices don't see it, and clearing site data deletes it. WhereThen asks the browser for persistent storage, but Safari may still delete data for sites you haven't used for 7 days unless the app is added to the Home Screen (Share → Add to Home Screen). Use **Export all trips** now and then as a backup.
+Everything lives in this browser on this device. Other browsers and devices don't see it, and clearing site data deletes it. WhereThen asks the browser for persistent storage, but on iPhone/iPad Safari may still delete data for sites you haven't opened for 7 days. Apps added to the Home Screen are exempt, so WhereThen is installable (web app manifest and icons) and shows a one-time hint on iPhone/iPad: tap **Share → Add to Home Screen** and open it from there. The Home Screen app has its own storage, separate from Safari, so move existing trips with **Export all trips** in Safari and **Import trip file…** in the app. Exporting now and then is still a good backup.
 
 ## Privacy
 

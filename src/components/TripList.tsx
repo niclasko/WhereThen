@@ -4,6 +4,7 @@ import { formatDateSpan } from '../lib/format';
 import { tripHref, safeColor } from '../lib/nav';
 import { getProvider } from '../providers';
 import { downloadTrips } from './download';
+import { InstallHint } from './InstallHint';
 
 interface Props {
   trips: Trip[];
@@ -23,6 +24,7 @@ export function TripList({ trips, notFound, onImportBackup }: Props) {
   return (
     <div className="trip-list">
       {notFound && <p className="notice">That trip could not be found in this browser.</p>}
+      <InstallHint hasTrips={trips.length > 0} />
       {trips.length === 0 ? (
         <section className="hero card">
           <h1>Where was I, and when?</h1>
