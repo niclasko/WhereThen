@@ -30,6 +30,8 @@ export interface PhotoProvider {
   id: string;
   name: string;
   description: string;
+  /** Label for the button that opens the photo picker, e.g. "Choose from iCloud Photos". */
+  pickLabel: string;
   /** Step-by-step instructions shown on the import screen. */
   instructions: string[];
   settingsFields: ProviderSettingField[];

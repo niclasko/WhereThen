@@ -19,11 +19,13 @@ export function isICloudUrl(value: string): boolean {
 export const icloudProvider: PhotoProvider = {
   id: 'icloud',
   name: 'iCloud Photos',
-  description: 'Choose photos from your iPhone or iPad photo library (synced with iCloud Photos).',
+  description: 'Choose photos straight from your iCloud Photos library. Nothing is uploaded.',
+  pickLabel: 'Choose from iCloud Photos',
   instructions: [
-    'Open WhereThen in Safari on your iPhone and tap “Choose photos”.',
-    'Pick the photos for your trip in the Photos picker.',
+    'iPhone / iPad (Safari): tap “Choose from iCloud Photos”. The Photos picker shows your whole iCloud library, including photos not stored on the device.',
     'Before tapping Add, tap “Options” at the top and make sure “Location” is turned on. Otherwise iOS removes the GPS data.',
+    'Mac (Safari): in the file dialog, select “Photos” in the sidebar to browse your iCloud Photos library.',
+    'Windows: install iCloud for Windows with Photos turned on, then open the “iCloud Photos” folder in the file dialog.',
     'Only metadata (time, location, file name) is saved in this browser. The photos stay in iCloud.',
   ],
   settingsFields: [

@@ -108,7 +108,7 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
       <div className="pick-row">
         {provider.fromFiles && (
           <label className={`button primary ${progress ? 'disabled' : ''}`}>
-            Choose photos
+            <span aria-hidden>☁️</span> {provider.pickLabel}
             <input
               type="file"
               multiple
@@ -124,7 +124,7 @@ export function ImportView({ existingTrip, onDone, onCancel }: Props) {
         )}
         {provider.pick && (
           <button className="button primary" disabled={!!progress} onClick={async () => handle(await provider.pick!(settings))}>
-            Choose from {provider.name}
+            {provider.pickLabel}
           </button>
         )}
         <button className="button" onClick={onCancel}>

@@ -8,15 +8,20 @@
 - 🕒 See a timeline whose colours and numbers match the map, grouped by day
 - 🔒 Only **metadata** (capture time, GPS position, file name, camera) and a **reference** to each photo are stored, in your browser's IndexedDB. Photos are never uploaded.
 
-## Using it on an iPhone
+## Choosing photos from iCloud Photos
 
-1. Open the app in Safari and tap **New trip → Choose photos**.
+**iPhone / iPad (Safari)**
+1. Open the app and tap **New trip → Choose from iCloud Photos**. The Photos picker shows your whole iCloud Photos library, including photos that are only stored in iCloud.
 2. Select the trip's photos. **Before tapping Add, tap _Options_ and turn on _Location_.** Otherwise iOS strips GPS data from photos handed to web pages.
 3. Check or change the suggested name, then tap **Create trip**.
 
+**Mac (Safari)**: in the file dialog, select **Photos** in the sidebar to browse your iCloud Photos library.
+
+**Windows**: install [iCloud for Windows](https://support.apple.com/en-us/103232) with Photos turned on, then open the **iCloud Photos** folder in the file dialog.
+
 Optionally paste an iCloud Shared Album / iCloud link for the trip. "Open in iCloud" then links straight to it. Otherwise it opens iCloud Photos.
 
-> iCloud Photos has no public web API, so a reference is the file name plus a size-based identifier, alongside the capture time. A provider with an API (Google Photos, OneDrive, …) can store real asset IDs and deep links. See below.
+> Apple offers no public web API for iCloud Photos, so the app can't sign in to iCloud itself. It relies on the system photo picker, which reads from your iCloud library. iCloud Shared Album links aren't used as a source because Apple removes GPS data from shared albums. A reference is the file name plus a size-based identifier, alongside the capture time. Providers with a picker API (Google Photos, OneDrive, …) can implement `pick()` to connect to the cloud account directly and store real asset IDs and deep links. See below.
 
 ## Features
 
@@ -70,6 +75,7 @@ Implement `PhotoProvider` (`src/providers/types.ts`) and add it to the registry 
 
 - File-picker based services implement `fromFiles(files)` and return a `PhotoRef` per file.
 - API-based services (e.g. the Google Photos Picker API or Microsoft Graph for OneDrive) implement `pick()`. It can return `metadata` (time, GPS) directly from the API, and a `file` blob only when EXIF needs to be read.
+- `pickLabel` is the text of the picker button (e.g. "Choose from Google Photos").
 - `getViewUrl(ref, settings)` returns a safe `https` deep link to the original photo.
 - `settingsFields` declares per-trip settings (such as the iCloud shared album link), which are rendered automatically.
 
