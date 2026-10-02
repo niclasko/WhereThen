@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PhotoRecord, Place } from '../types';
-import { assignPlaces, computeVisits, reclusterTrip, removePhotosFromTrip, setPlaceLabel } from './trip';
+import { assignPlaces, computeVisits, reclusterTrip, removePhotosFromTrip, setPlaceLabel, spotName } from './trip';
 import { suggestTripName, seasonFor } from './naming';
 import { labelFromNominatim, zoomForRadius } from './geocode';
 import { formatDuration, formatRange } from './format';
@@ -186,6 +186,19 @@ describe('name suggestions', () => {
   it('flips seasons in the southern hemisphere', () => {
     expect(seasonFor(1)).toBe('Winter');
     expect(seasonFor(1, true)).toBe('Summer');
+  });
+});
+
+describe('photo spots', () => {
+  const place = { id: 'p', lat: 0, lon: 0, color: '#000', label: { name: 'Trastevere', locality: 'Rome' } } as Place;
+  it("drops the place's own town and hides spots equal to the place name", () => {
+    const p = photo('2026-07-01T10:00:00', ...ROME);
+    expect(spotName({ ...p, spot: { name: 'Piazza di Santa Maria, Rome', locality: 'Rome' } }, place)).toBe('Piazza di Santa Maria');
+    expect(spotName({ ...p, spot: { name: 'Trastevere, Rome', locality: 'Rome' } }, place)).toBeUndefined();
+    expect(spotName({ ...p, spot: { name: 'Ostia Antica, Ostia', locality: 'Ostia' } }, place)).toBe('Ostia Antica, Ostia');
+    expect(spotName({ ...p, spot: null }, place)).toBeUndefined();
+    const hood = { ...place, label: { name: 'Municipio Roma I, Rome', locality: 'Rome' } } as Place;
+    expect(spotName({ ...p, spot: { name: 'Municipio Roma I, Rome', locality: 'Rome' } }, hood)).toBeUndefined();
   });
 });
 

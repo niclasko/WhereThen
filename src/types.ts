@@ -25,6 +25,8 @@ export interface PhotoRecord {
   /** Optional tiny preview (data URL) that only ever lives in this browser. */
   thumbnail?: string;
   placeId?: string;
+  /** Street/landmark-level name for this photo's own location (`null`: looked up, nothing found). */
+  spot?: PlaceLabel | null;
 }
 
 export interface PlaceLabel {

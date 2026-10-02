@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { GeocodeStatus, Trip } from '../types';
-import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, byTime } from '../lib/trip';
+import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, setPhotoSpot, byTime } from '../lib/trip';
 import { withSuggestedName } from '../lib/importer';
 import { formatDateSpan } from '../lib/format';
 import { getProvider } from '../providers';
@@ -8,6 +8,7 @@ import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
 import { PlaceDetails } from './PlaceDetails';
 import { exportTrip } from './download';
+import { Popover, type Anchor } from './Popover';
 
 interface Props {
   trip: Trip;
@@ -19,7 +20,9 @@ interface Props {
 
 export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDelete }: Props) {
   const provider = getProvider(trip.providerId);
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
+  const [selection, setSelection] = useState<{ placeId: string; anchor?: Anchor; from: 'map' | 'timeline' }>();
+  const selectedPlaceId = selection?.placeId;
+  const closePlace = useCallback(() => setSelection(undefined), []);
   const [draftName, setDraftName] = useState<string>();
   const [exportMessage, setExportMessage] = useState<string>();
   const visits = useMemo(() => computeVisits(trip.photos), [trip.photos]);
@@ -77,7 +80,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
             <select
               value={trip.clusterRadiusKm}
               onChange={(e) => {
-                setSelectedPlaceId(undefined);
+                setSelection(undefined);
                 void onChange((t) => withSuggestedName(reclusterTrip(t, Number(e.target.value))));
               }}
             >
@@ -124,13 +127,20 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           visits={visits}
           photos={trip.photos}
           selectedPlaceId={selectedPlaceId}
-          onSelect={setSelectedPlaceId}
+          panToSelected={selection?.from !== 'map'}
+          onSelect={(placeId, anchor) => setSelection({ placeId, anchor, from: 'map' })}
         />
       )}
 
-      <Timeline visits={visits} places={trip.places} selectedPlaceId={selectedPlaceId} onSelect={setSelectedPlaceId} />
+      <Timeline
+        visits={visits}
+        places={trip.places}
+        selectedPlaceId={selectedPlaceId}
+        onSelect={(placeId, anchor) => setSelection({ placeId, anchor, from: 'timeline' })}
+      />
 
-      {selectedPlace && (
+      {selectedPlace && (() => {
+        const details = (
         <PlaceDetails
           trip={trip}
           place={selectedPlace}
@@ -145,9 +155,18 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
             )
           }
           onRemovePhotos={(ids) => void removePhotos(ids)}
-          onClose={() => setSelectedPlaceId(undefined)}
+          onSpot={(photoId, spot) => onChange((t) => setPhotoSpot(t, photoId, spot))}
+          onClose={closePlace}
         />
-      )}
+        );
+        return selection?.anchor ? (
+          <Popover anchor={selection.anchor} keepOpenOn=".leaflet-marker-icon, .segment, .chip" onClose={closePlace}>
+            {details}
+          </Popover>
+        ) : (
+          details
+        );
+      })()}
 
       {unlocated > 0 && (
         <p className="muted small">

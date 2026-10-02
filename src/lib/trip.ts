@@ -153,3 +153,23 @@ export function placeName(place: Place | undefined, index?: number): string {
   if (!place) return 'Unknown place';
   return place.customName || place.label?.name || (index !== undefined ? `Place ${index + 1}` : 'Locating…');
 }
+
+/**
+ * The detailed location of a photo within its place, e.g. "Piazza Navona" inside "Rome". The town is
+ * left out when it's the place itself, and nothing is shown when it would just repeat the place name.
+ */
+export function spotName(photo: PhotoRecord, place: Place | undefined): string | undefined {
+  const spot = photo.spot;
+  if (!spot) return undefined;
+  let name = spot.name;
+  const suffix = spot.locality ? `, ${spot.locality}` : '';
+  if (suffix && name.endsWith(suffix) && [place?.label?.name, place?.label?.locality].includes(spot.locality)) {
+    name = name.slice(0, -suffix.length);
+  }
+  const own = [place?.label?.name, place?.customName].filter(Boolean).map((n) => n!.split(', ')[0]);
+  return own.includes(name) || own.includes(spot.name.split(', ')[0]) ? undefined : name;
+}
+
+export function setPhotoSpot(trip: Trip, photoId: string, spot: PlaceLabel | null): Trip {
+  return { ...trip, photos: trip.photos.map((p) => (p.id === photoId ? { ...p, spot } : p)) };
+}

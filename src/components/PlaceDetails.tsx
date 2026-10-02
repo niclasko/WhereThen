@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
-import type { Place, Trip, Visit } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { Place, PlaceLabel, Trip, Visit } from '../types';
 import { formatDateTime, formatRange } from '../lib/format';
-import { byTime, placeName } from '../lib/trip';
+import { byTime, placeName, spotName } from '../lib/trip';
 import { safeColor, safeImageSrc } from '../lib/nav';
+import { nominatimGeocoder } from '../lib/geocode';
 import { PhotoViewer } from './PhotoViewer';
+
+/** Below this level of detail, places are already spots, so photos don't need their own names. */
+const SPOT_RADIUS_KM = 0.3;
 
 interface Props {
   trip: Trip;
@@ -12,10 +16,11 @@ interface Props {
   visits: Visit[];
   onRename: (name: string) => void;
   onRemovePhotos: (photoIds: string[]) => void;
+  onSpot: (photoId: string, spot: PlaceLabel | null) => void;
   onClose: () => void;
 }
 
-export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePhotos, onClose }: Props) {
+export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePhotos, onSpot, onClose }: Props) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState<number>();
   const [selected, setSelected] = useState<Set<string>>();
@@ -25,10 +30,33 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
   }, [place.id]);
   const photos = trip.photos.filter((p) => p.placeId === place.id).sort(byTime);
   const name = placeName(place, index);
+  const showSpots = trip.clusterRadiusKm > SPOT_RADIUS_KM;
   // After removing the last photo in the viewer, show the one before it.
   useEffect(() => {
     if (viewing !== undefined && viewing >= photos.length) setViewing(photos.length ? photos.length - 1 : undefined);
   }, [viewing, photos.length]);
+
+  // Look up each photo's own spot (street, square, landmark) while the place is open. Results are saved
+  // with the trip, and nearby photos share cached lookups.
+  const latest = useRef({ photos, onSpot });
+  latest.current = { photos, onSpot };
+  useEffect(() => {
+    if (!showSpots) return;
+    const controller = new AbortController();
+    void (async () => {
+      const pending = latest.current.photos.filter((p) => p.spot === undefined && p.lat !== null && p.lon !== null);
+      for (const photo of pending) {
+        try {
+          const spot = await nominatimGeocoder.reverse(photo.lat!, photo.lon!, SPOT_RADIUS_KM, controller.signal);
+          if (controller.signal.aborted) return;
+          latest.current.onSpot(photo.id, spot);
+        } catch {
+          return;
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [place.id, showSpots]);
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -75,10 +103,13 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
         </button>
       </header>
       <p className="muted small">
-        {[place.label?.locality !== place.label?.name ? place.label?.locality : undefined, place.label?.country]
+        {[
+          place.label?.locality !== place.label?.name ? place.label?.locality : undefined,
+          place.label?.country,
+          `${place.lat.toFixed(4)}, ${place.lon.toFixed(4)}`,
+        ]
           .filter(Boolean)
-          .join(', ')}{' '}
-        · {place.lat.toFixed(4)}, {place.lon.toFixed(4)}
+          .join(' · ')}
       </p>
       <ul className="visit-list">
         {visits.map((v) => (
@@ -108,12 +139,16 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
         {photos.map((photo, i) => {
           const thumb = safeImageSrc(photo.thumbnail);
           const isSelected = !!selected?.has(photo.id);
+          const when = photo.localTime
+            ? `${formatDateTime(photo.localTime)}${photo.timeSource === 'file' ? ' (file date)' : ''}`
+            : 'Unknown time';
+          const spot = showSpots ? spotName(photo, place) : undefined;
           return (
             <li key={photo.id}>
               <button
                 className={`photo ${isSelected ? 'selected' : ''}`}
                 onClick={() => (selected ? toggle(photo.id) : setViewing(i))}
-                aria-label={`${selected ? 'Select' : 'View'} ${photo.ref.fileName}`}
+                aria-label={`${selected ? 'Select' : 'View'} photo, ${when}${spot ? `, ${spot}` : ''}`}
                 aria-pressed={selected ? isSelected : undefined}
               >
                 {selected && (
@@ -122,13 +157,10 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
                   </span>
                 )}
                 {thumb ? <img src={thumb} alt="" loading="lazy" /> : <div className="photo-placeholder">📷</div>}
-                <span className="file" title={photo.ref.fileName}>
-                  {photo.ref.fileName}
-                </span>
-                {photo.localTime && (
-                  <span className="muted small">
-                    {formatDateTime(photo.localTime)}
-                    {photo.timeSource === 'file' ? ' (file date)' : ''}
+                <span className="photo-when">{when}</span>
+                {spot && (
+                  <span className="photo-spot muted small" title={spot}>
+                    📍 {spot}
                   </span>
                 )}
               </button>
@@ -141,7 +173,7 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
           trip={trip}
           photos={photos}
           index={viewing}
-          placeName={name}
+          spotOf={(photo) => (showSpots ? spotName(photo, place) : undefined)}
           onIndex={setViewing}
           onRemove={(id) => onRemovePhotos([id])}
           onClose={() => setViewing(undefined)}

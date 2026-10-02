@@ -5,13 +5,16 @@ import type { PhotoRecord, Place, Visit } from '../types';
 import { byTime, placeName } from '../lib/trip';
 import { safeColor, safeImageSrc } from '../lib/nav';
 import { formatDuration, formatRange } from '../lib/format';
+import { anchorFrom, type Anchor } from './Popover';
 
 interface Props {
   places: Place[];
   visits: Visit[];
   photos: PhotoRecord[];
   selectedPlaceId?: string;
-  onSelect: (placeId: string) => void;
+  /** Pan to the selected place (off when it was picked on the map itself, so the pin stays under the panel). */
+  panToSelected?: boolean;
+  onSelect: (placeId: string, anchor?: Anchor) => void;
 }
 
 const MAX_VISITS_SHOWN = 4;
@@ -79,7 +82,7 @@ function FocusSelected({ place }: { place?: Place }) {
   return null;
 }
 
-export function TripMap({ places, visits, photos, selectedPlaceId, onSelect }: Props) {
+export function TripMap({ places, visits, photos, selectedPlaceId, panToSelected = true, onSelect }: Props) {
   const byId = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
   const visitsByPlace = useMemo(() => {
     const m = new Map<string, Visit[]>();
@@ -117,7 +120,7 @@ export function TripMap({ places, visits, photos, selectedPlaceId, onSelect }: P
           position={[place.lat, place.lon]}
           icon={pinIcon(i, place.color, place.id === selectedPlaceId)}
           zIndexOffset={place.id === selectedPlaceId ? 1000 : 0}
-          eventHandlers={{ click: () => onSelect(place.id) }}
+          eventHandlers={{ click: (e) => onSelect(place.id, anchorFrom((e.target as L.Marker).getElement())) }}
         >
           <Tooltip direction="top" offset={[0, -14]} opacity={1} className="map-tooltip">
             <PlaceTooltip place={place} index={i} visits={visitsByPlace.get(place.id) ?? []} thumbnail={thumbByPlace.get(place.id)} />
@@ -125,7 +128,7 @@ export function TripMap({ places, visits, photos, selectedPlaceId, onSelect }: P
         </Marker>
       ))}
       <FitToPlaces places={places} />
-      <FocusSelected place={selected} />
+      <FocusSelected place={panToSelected ? selected : undefined} />
     </MapContainer>
   );
 }

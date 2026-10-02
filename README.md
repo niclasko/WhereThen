@@ -23,7 +23,9 @@
 
 The button label and instructions adapt to the device, so each device only sees its own steps.
 
-**Viewing photos**: tap a photo to see its preview full screen (swipe or use the arrow keys to browse), with its date, time and file name. Apple has no web link to a single photo in iCloud Photos, so there's no per-photo iCloud link.
+**Places**: tap a pin on the map or an item on the timeline and the place's photos open in a panel right there (tap outside, ✕ or Esc to close). Each photo shows its date and time, plus the street or spot where it was taken (looked up in the background while the panel is open, once per photo, and saved with the trip).
+
+**Viewing photos**: tap a photo to see its preview full screen (swipe or use the arrow keys to browse), with its date, time and spot. Apple has no web link to a single photo in iCloud Photos, so there's no per-photo iCloud link.
 
 > Apple offers no public web API for iCloud Photos, so the app can't sign in to iCloud itself. It relies on the system photo picker, which reads from your iCloud library. iCloud Shared Album links aren't used as a source because Apple removes GPS data from shared albums. A reference is the file name plus a size-based identifier, alongside the capture time. Providers with a picker API (Google Photos, OneDrive, …) can implement `pick()` to connect to the cloud account directly and store real asset IDs and deep links. See below.
 

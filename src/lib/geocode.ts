@@ -39,8 +39,15 @@ export function labelFromNominatim(json: { name?: string; address?: Address } | 
 }
 
 const MIN_INTERVAL_MS = 1100;
-let lastRequest = 0;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+let queue: Promise<void> = Promise.resolve();
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Spaces out requests, also when several lookups (places, photo spots) run at the same time. */
+function throttle(): Promise<void> {
+  const turn = queue;
+  queue = turn.then(() => sleep(MIN_INTERVAL_MS));
+  return turn;
+}
 
 /** OpenStreetMap Nominatim (free, max 1 request/second). Results are cached in IndexedDB. */
 export const nominatimGeocoder: Geocoder = {
@@ -50,9 +57,8 @@ export const nominatimGeocoder: Geocoder = {
     const cached = await getCachedLabel(key);
     if (cached !== undefined) return cached;
 
-    const wait = lastRequest + MIN_INTERVAL_MS - Date.now();
-    if (wait > 0) await sleep(wait);
-    lastRequest = Date.now();
+    await throttle();
+    signal?.throwIfAborted();
 
     const url = new URL('https://nominatim.openstreetmap.org/reverse');
     url.search = new URLSearchParams({

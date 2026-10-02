@@ -3,12 +3,13 @@ import type { Place, Visit } from '../types';
 import { formatRange, formatTick, formatWeekday, wallClock } from '../lib/format';
 import { placeName } from '../lib/trip';
 import { safeColor } from '../lib/nav';
+import { anchorFrom, type Anchor } from './Popover';
 
 interface Props {
   visits: Visit[];
   places: Place[];
   selectedPlaceId?: string;
-  onSelect: (placeId: string) => void;
+  onSelect: (placeId: string, anchor?: Anchor) => void;
 }
 
 const DAY = 86_400_000;
@@ -70,7 +71,7 @@ export function Timeline({ visits, places, selectedPlaceId, onSelect }: Props) {
               className={`segment${visit.placeId === selectedPlaceId ? ' selected' : ''}`}
               style={{ left: `${left}%`, width: `max(${width}%, 4px)`, background: safeColor(place?.color ?? '') }}
               title={`${placeName(place, index.get(visit.placeId))} · ${formatRange(visit.startLocal, visit.endLocal)}`}
-              onClick={() => onSelect(visit.placeId)}
+              onClick={(e) => onSelect(visit.placeId, anchorFrom(e.currentTarget))}
             />
           );
         })}
@@ -96,7 +97,7 @@ export function Timeline({ visits, places, selectedPlaceId, onSelect }: Props) {
                     key={`${v.placeId}-${v.start}`}
                     className={`chip${v.placeId === selectedPlaceId ? ' selected' : ''}`}
                     style={{ borderColor: safeColor(place?.color ?? '') }}
-                    onClick={() => onSelect(v.placeId)}
+                    onClick={(e) => onSelect(v.placeId, anchorFrom(e.currentTarget))}
                   >
                     <span className="chip-num" style={{ background: safeColor(place?.color ?? '') }}>
                       {i + 1}

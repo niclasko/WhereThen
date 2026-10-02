@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { PhotoRecord, Trip } from '../types';
 import { formatDateTime } from '../lib/format';
 import { safeImageSrc } from '../lib/nav';
@@ -8,19 +9,20 @@ interface Props {
   trip: Trip;
   photos: PhotoRecord[];
   index: number;
-  placeName: string;
+  spotOf: (photo: PhotoRecord) => string | undefined;
   onIndex: (index: number) => void;
   onRemove: (photoId: string) => void;
   onClose: () => void;
 }
 
 /** Full-screen preview of a photo, using the preview kept in this browser. */
-export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove, onClose }: Props) {
+export function PhotoViewer({ trip, photos, index, spotOf, onIndex, onRemove, onClose }: Props) {
   const provider = getProvider(trip.providerId);
   const photo = photos[index];
   const src = safeImageSrc(photo.thumbnail);
   const url = provider.getViewUrl?.(photo.ref);
   const when = photo.localTime ? formatDateTime(photo.localTime) : undefined;
+  const spot = spotOf(photo);
   const hasPrev = index > 0;
   const hasNext = index < photos.length - 1;
   const touchX = useRef<number>(undefined);
@@ -45,7 +47,7 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove,
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
       className="viewer"
       role="dialog"
@@ -63,7 +65,7 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove,
     >
       <header className="viewer-bar">
         <span>
-          {index + 1} / {photos.length} · {placeName}
+          {index + 1} / {photos.length}
         </span>
         <button ref={closeRef} className="viewer-close" onClick={onClose} aria-label="Close">
           ✕
@@ -77,7 +79,7 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove,
           </button>
         )}
         {src ? (
-          <img src={src} alt={`${photo.ref.fileName}${when ? `, ${when}` : ''}`} />
+          <img src={src} alt={`Photo${when ? ` from ${when}` : ''}${spot ? `, ${spot}` : ''}`} />
         ) : (
           <div className="viewer-empty">
             <span aria-hidden>📷</span>
@@ -98,7 +100,7 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove,
       <footer className="viewer-bar">
         <span>
           <strong>{when ?? 'Unknown time'}</strong>
-          <span className="viewer-file"> · {photo.ref.fileName}</span>
+          {spot && <span className="viewer-file"> · 📍 {spot}</span>}
         </span>
         {url && (
           <a className="viewer-find" href={url} target="_blank" rel="noopener noreferrer">
@@ -115,6 +117,7 @@ export function PhotoViewer({ trip, photos, index, placeName, onIndex, onRemove,
           Remove from trip
         </button>
       </footer>
-    </div>
+    </div>,
+    document.body,
   );
 }
