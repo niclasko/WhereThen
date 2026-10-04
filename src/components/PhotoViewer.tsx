@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { PhotoRecord, Trip } from '../types';
 import { formatDateTime } from '../lib/format';
 import { safeImageSrc } from '../lib/nav';
+import { kindInfo } from '../lib/kinds';
 import { getProvider } from '../providers';
 
 interface Props {
@@ -79,7 +80,7 @@ export function PhotoViewer({ trip, photos, index, spotOf, onIndex, onRemove, on
           </button>
         )}
         {src ? (
-          <img src={src} alt={`Photo${when ? ` from ${when}` : ''}${spot ? `, ${spot}` : ''}`} />
+          <img src={src} alt={photo.ai?.caption ?? `Photo${when ? ` from ${when}` : ''}${spot ? `, ${spot}` : ''}`} />
         ) : (
           <div className="viewer-empty">
             <span aria-hidden>📷</span>
@@ -96,6 +97,24 @@ export function PhotoViewer({ trip, photos, index, spotOf, onIndex, onRemove, on
           </button>
         )}
       </div>
+
+      {photo.ai && (
+        <div className="viewer-caption">
+          <p>{photo.ai.caption}</p>
+          {(photo.ai.tags.length > 0 || kindInfo(photo.ai.kind)) && (
+            <ul className="viewer-tags" aria-label="Tags">
+              {kindInfo(photo.ai.kind) && (
+                <li className="kind">
+                  {kindInfo(photo.ai.kind)!.emoji} {kindInfo(photo.ai.kind)!.label}
+                </li>
+              )}
+              {photo.ai.tags.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <footer className="viewer-bar">
         <span>

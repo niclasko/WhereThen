@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GeocodeStatus, Trip } from './types';
 import { deleteTrip, listTrips, parseTripExport, requestPersistentStorage, saveTrip } from './lib/storage';
 import { nominatimGeocoder } from './lib/geocode';
+import { loadAiSettings, needsDescription } from './lib/ai';
+import { useAutoDescribe } from './lib/useAutoDescribe';
 import { withSuggestedName } from './lib/importer';
 import { setPlaceLabel } from './lib/trip';
 import { TripView } from './components/TripView';
 import { ImportView } from './components/ImportView';
 import { TripList } from './components/TripList';
+import { AiButton } from './components/AiSettings';
 import { navigate, tripHref } from './lib/nav';
 
 type Route = { kind: 'home' } | { kind: 'new' } | { kind: 'trip'; id: string } | { kind: 'add'; id: string };
@@ -32,6 +35,7 @@ export default function App() {
     const onHash = () => setRoute(parseHash(window.location.hash));
     window.addEventListener('hashchange', onHash);
     void requestPersistentStorage();
+    void loadAiSettings();
     listTrips().then((all) => {
       tripsRef.current = all;
       setTrips(all);
@@ -122,6 +126,8 @@ export default function App() {
   );
 
   const activeTrip = route.kind === 'trip' || route.kind === 'add' ? trips.find((t) => t.id === route.id) : undefined;
+  const { progress: aiProgress, retry: retryAi } = useAutoDescribe(trips, tripsRef, updateTrip, activeTrip?.id);
+  const aiPending = useMemo(() => trips.reduce((n, t) => n + t.photos.filter(needsDescription).length, 0), [trips]);
 
   return (
     <div className="app">
@@ -130,6 +136,7 @@ export default function App() {
           <span className="brand-pin" aria-hidden>📍</span> WhereThen
         </a>
         <span className="tagline">where you were, and when</span>
+        <AiButton progress={aiProgress} pending={aiPending} onRetry={retryAi} />
         {route.kind !== 'new' && (
           <a className="button primary small" href="#/new">
             + New trip
@@ -163,6 +170,8 @@ export default function App() {
             trip={activeTrip}
             geocodeStatus={geoStatus[activeTrip.id] ?? 'idle'}
             onRetryGeocoding={() => retryGeocoding(activeTrip.id)}
+            ai={aiProgress}
+            onRetryAi={retryAi}
             onChange={(fn) => updateTrip(activeTrip.id, fn)}
             onDelete={() => removeTrip(activeTrip.id)}
           />

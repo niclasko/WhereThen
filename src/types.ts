@@ -1,3 +1,5 @@
+import type { PhotoKind } from './lib/kinds';
+
 /** Reference to a photo that lives in an external photo service. The photo bytes are never stored. */
 export interface PhotoRef {
   providerId: string;
@@ -27,6 +29,15 @@ export interface PhotoRecord {
   placeId?: string;
   /** Street/landmark-level name for this photo's own location (`null`: looked up, nothing found). */
   spot?: PlaceLabel | null;
+  /** Caption and tags from the user's own AI service, if they set one up. */
+  ai?: PhotoDescription;
+}
+
+export interface PhotoDescription {
+  caption: string;
+  tags: string[];
+  /** Main category; missing for captions made before categories existed (those are described again). */
+  kind?: PhotoKind;
 }
 
 export interface PlaceLabel {

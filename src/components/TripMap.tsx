@@ -17,6 +17,8 @@ interface Props {
   /** Pan to the selected place (off when it was picked on the map itself, so the pin stays under the panel). */
   panToSelected?: boolean;
   onSelect: (placeId: string, anchor?: Anchor) => void;
+  /** When filtering: the places to show (numbers and colours stay those of the whole trip). */
+  visibleIds?: Set<string>;
 }
 
 const MAX_VISITS_SHOWN = 4;
@@ -116,7 +118,8 @@ function FocusSelected({ place }: { place?: Place }) {
   return null;
 }
 
-export function TripMap({ places, visits, legs, photos, selectedPlaceId, panToSelected = true, onSelect }: Props) {
+export function TripMap({ places, visits, legs, photos, selectedPlaceId, panToSelected = true, onSelect, visibleIds }: Props) {
+  const shown = useMemo(() => (visibleIds ? places.filter((p) => visibleIds.has(p.id)) : places), [places, visibleIds]);
   const byId = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
   const visitsByPlace = useMemo(() => {
     const m = new Map<string, Visit[]>();
@@ -161,7 +164,7 @@ export function TripMap({ places, visits, legs, photos, selectedPlaceId, panToSe
           </Tooltip>
         </Polyline>
       ))}
-      {places.map((place, i) => (
+      {places.map((place, i) => (!visibleIds || visibleIds.has(place.id)) && (
         <Marker
           key={place.id}
           position={[place.lat, place.lon]}
@@ -174,7 +177,7 @@ export function TripMap({ places, visits, legs, photos, selectedPlaceId, panToSe
           </Tooltip>
         </Marker>
       ))}
-      <FitToPlaces places={places} />
+      <FitToPlaces places={shown} />
       <FocusSelected place={panToSelected ? selected : undefined} />
     </MapContainer>
   );

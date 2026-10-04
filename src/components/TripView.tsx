@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GeocodeStatus, Trip } from '../types';
-import { computeVisits, DETAIL_LEVELS, reclusterTrip, removePhotosFromTrip, setPhotoSpot, byTime } from '../lib/trip';
+import { computeVisits, placeName, reclusterTrip, removePhotosFromTrip, setPhotoSpot, byTime } from '../lib/trip';
 import { withSuggestedName } from '../lib/importer';
 import { formatDateSpan, formatDistance } from '../lib/format';
 import { mapsLinks, osrmRouter, setRoute, travelledKm, tripLegs } from '../lib/routing';
 import { getProvider } from '../providers';
+import { needsDescription } from '../lib/ai';
+import { activeFilterCount, filterOptions, NO_FILTERS, photoMatches, pickGranularity, type TripFilters } from '../lib/filters';
+import type { AiProgress } from '../lib/useAutoDescribe';
 import { TripMap } from './TripMap';
 import { Timeline } from './Timeline';
 import { PlaceDetails } from './PlaceDetails';
+import { Slicer } from './Slicer';
 import { exportTrip } from './download';
 import { Popover, type Anchor } from './Popover';
 
@@ -15,11 +19,15 @@ interface Props {
   trip: Trip;
   geocodeStatus: GeocodeStatus;
   onRetryGeocoding: () => void;
+  ai: AiProgress;
+  onRetryAi: () => void;
   onChange: (fn: (trip: Trip) => Trip) => Promise<void>;
   onDelete: () => void;
 }
 
-export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDelete }: Props) {
+const WHEN_TITLE = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' } as const;
+
+export function TripView({ trip, geocodeStatus, onRetryGeocoding, ai, onRetryAi, onChange, onDelete }: Props) {
   const provider = getProvider(trip.providerId);
   const [selection, setSelection] = useState<{ placeId: string; anchor?: Anchor; from: 'map' | 'timeline' }>();
   const selectedPlaceId = selection?.placeId;
@@ -32,6 +40,31 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
   const pendingLegs = legs.filter((l) => l.pending);
   const nextLeg = pendingLegs[0];
   const [routeError, setRouteError] = useState(false);
+
+  // Filters narrow down what the map, timeline and place panels show; the trip itself is unchanged.
+  const [filters, setFilters] = useState<TripFilters>(NO_FILTERS);
+  const filtering = activeFilterCount(filters) > 0;
+  const granularity = useMemo(() => pickGranularity(trip.photos), [trip.photos]);
+  const options = useMemo(() => filterOptions(trip.photos, granularity), [trip.photos, granularity]);
+  const shownPhotos = useMemo(() => {
+    if (!filtering) return trip.photos;
+    const names = new Map(trip.places.map((p, i) => [p.id, placeName(p, i)]));
+    return trip.photos.filter((p) => photoMatches(p, filters, granularity, p.placeId && names.get(p.placeId)));
+  }, [trip.photos, trip.places, filters, filtering, granularity]);
+  const shownVisits = useMemo(() => (filtering ? computeVisits(shownPhotos) : visits), [filtering, shownPhotos, visits]);
+  // Lines between the matching places; routes are only looked up for the whole trip.
+  const shownLegs = useMemo(
+    () => (filtering ? tripLegs(shownVisits, trip.places, trip.routes).map((l) => ({ ...l, pending: false })) : legs),
+    [filtering, shownVisits, trip.places, trip.routes, legs],
+  );
+  const shownPlaceIds = useMemo(
+    () => (filtering ? new Set(shownPhotos.map((p) => p.placeId).filter((id): id is string => !!id)) : undefined),
+    [filtering, shownPhotos],
+  );
+  useEffect(() => {
+    if (selectedPlaceId && shownPlaceIds && !shownPlaceIds.has(selectedPlaceId)) setSelection(undefined);
+  }, [selectedPlaceId, shownPlaceIds]);
+  const describing = ai.state === 'working' ? trip.photos.filter(needsDescription).length : 0;
 
   // Look up routes one at a time in the background; each one is saved with the trip, so this happens only once.
   useEffect(() => {
@@ -98,24 +131,17 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
               Some routes couldn’t be looked up. Retry
             </button>
           )}
+          {describing > 0 && <span className="pulse">✨ Describing photos… {describing} to go</span>}
+          {ai.state === 'paused' && (
+            <span className="error-text">
+              ✨ AI captions paused: {ai.error}{' '}
+              <button className="link" onClick={onRetryAi}>
+                Retry
+              </button>
+            </span>
+          )}
         </div>
         <div className="trip-actions">
-          <label className="inline">
-            Detail
-            <select
-              value={trip.clusterRadiusKm}
-              onChange={(e) => {
-                setSelection(undefined);
-                void onChange((t) => withSuggestedName(reclusterTrip(t, Number(e.target.value))));
-              }}
-            >
-              {DETAIL_LEVELS.map((d) => (
-                <option key={d.radiusKm} value={d.radiusKm}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
           {links.length === 1 && (
             <a className="button small" href={links[0].url} target="_blank" rel="noopener noreferrer" title={`Directions: ${links[0].label}`}>
               🧭 Open in Bing Maps
@@ -165,31 +191,49 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
           <strong>Location</strong>, then add the photos again.
         </p>
       ) : (
-        <TripMap
-          places={trip.places}
-          visits={visits}
-          legs={legs}
-          photos={trip.photos}
-          selectedPlaceId={selectedPlaceId}
-          panToSelected={selection?.from !== 'map'}
-          onSelect={(placeId, anchor) => setSelection({ placeId, anchor, from: 'map' })}
-        />
+        <>
+          <Slicer
+            radiusKm={trip.clusterRadiusKm}
+            onRadius={(radiusKm) => {
+              setSelection(undefined);
+              void onChange((t) => withSuggestedName(reclusterTrip(t, radiusKm)));
+            }}
+            filters={filters}
+            onFilters={setFilters}
+            options={options}
+            whenTitle={WHEN_TITLE[granularity]}
+            ai={ai}
+            shown={{ photos: shownPhotos.length, places: shownPlaceIds?.size ?? trip.places.length, total: trip.photos.length }}
+          />
+          <TripMap
+            places={trip.places}
+            visits={shownVisits}
+            legs={shownLegs}
+            photos={shownPhotos}
+            visibleIds={shownPlaceIds}
+            selectedPlaceId={selectedPlaceId}
+            panToSelected={selection?.from !== 'map'}
+            onSelect={(placeId, anchor) => setSelection({ placeId, anchor, from: 'map' })}
+          />
+        </>
       )}
 
-      <Timeline
-        visits={visits}
+      {!(filtering && !shownVisits.length) && <Timeline
+        visits={shownVisits}
         places={trip.places}
         selectedPlaceId={selectedPlaceId}
         onSelect={(placeId, anchor) => setSelection({ placeId, anchor, from: 'timeline' })}
-      />
+      />}
 
       {selectedPlace && (() => {
         const details = (
         <PlaceDetails
           trip={trip}
+          photos={shownPhotos}
+          filtered={filtering}
           place={selectedPlace}
           index={trip.places.indexOf(selectedPlace)}
-          visits={visits.filter((v) => v.placeId === selectedPlace.id)}
+          visits={shownVisits.filter((v) => v.placeId === selectedPlace.id)}
           onRename={(customName) =>
             onChange((t) =>
               withSuggestedName({
@@ -224,6 +268,7 @@ export function TripView({ trip, geocodeStatus, onRetryGeocoding, onChange, onDe
       <p className="muted small">
         This trip, including photo previews, is stored only in this browser. Place names are looked up with OpenStreetMap
         Nominatim, and routes with OSRM (routing.openstreetmap.de); both receive the coordinates of the places.
+        {ai.state !== 'off' && ' With AI captions on, photo previews and place names are also sent to your own AI service.'}
       </p>
     </div>
   );

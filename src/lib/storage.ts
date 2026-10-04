@@ -1,23 +1,38 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { PlaceLabel, Trip } from '../types';
+import type { PhotoDescription, PlaceLabel, Trip } from '../types';
 import { providers } from '../providers';
+import { KIND_IDS, type PhotoKind } from './kinds';
 
 interface WhereThenDB extends DBSchema {
   trips: { key: string; value: Trip; indexes: { updatedAt: number } };
   geocode: { key: string; value: { label: PlaceLabel | null; at: number } };
+  settings: { key: string; value: unknown };
 }
 
 let dbPromise: Promise<IDBPDatabase<WhereThenDB>> | undefined;
 
 function db() {
-  dbPromise ??= openDB<WhereThenDB>('wherethen', 1, {
-    upgrade(database) {
-      const trips = database.createObjectStore('trips', { keyPath: 'id' });
-      trips.createIndex('updatedAt', 'updatedAt');
-      database.createObjectStore('geocode');
+  dbPromise ??= openDB<WhereThenDB>('wherethen', 2, {
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) {
+        const trips = database.createObjectStore('trips', { keyPath: 'id' });
+        trips.createIndex('updatedAt', 'updatedAt');
+        database.createObjectStore('geocode');
+      }
+      if (oldVersion < 2) database.createObjectStore('settings');
     },
   });
   return dbPromise;
+}
+
+/** App settings, kept separately from trips so they are never part of an exported trip file. */
+export async function getSetting(key: string): Promise<unknown> {
+  return (await db()).get('settings', key);
+}
+
+export async function putSetting(key: string, value: unknown): Promise<void> {
+  if (value === null || value === undefined) await (await db()).delete('settings', key);
+  else await (await db()).put('settings', value, key);
 }
 
 export async function listTrips(): Promise<Trip[]> {
@@ -51,6 +66,15 @@ export async function requestPersistentStorage(): Promise<void> {
   }
 }
 
+/** Keeps a short caption and a few short tags; returns undefined when the data isn't a description. */
+export function sanitizeDescription(data: unknown): PhotoDescription | undefined {
+  const d = data as Partial<PhotoDescription> | null;
+  if (!d || typeof d.caption !== 'string' || !d.caption.trim() || !Array.isArray(d.tags)) return undefined;
+  const tags = [...new Set(d.tags.filter((t): t is string => typeof t === 'string').map((t) => t.trim().toLowerCase().slice(0, 30)).filter(Boolean))];
+  const kind = KIND_IDS.includes(d.kind as PhotoKind) ? d.kind : undefined;
+  return { caption: d.caption.trim().slice(0, 200), tags: tags.slice(0, 5), ...(kind && { kind }) };
+}
+
 export interface TripExport {
   app: 'WhereThen';
   version: 1;
@@ -70,6 +94,12 @@ export function parseTripExport(text: string): Trip[] {
     }
     if (t.routes !== undefined && (typeof t.routes !== 'object' || t.routes === null || Array.isArray(t.routes))) {
       delete t.routes;
+    }
+    for (const p of t.photos) {
+      if (p?.ai === undefined || p.ai === null) continue;
+      const ai = sanitizeDescription(p.ai);
+      if (ai) p.ai = ai;
+      else delete p.ai;
     }
   }
   return data.trips;

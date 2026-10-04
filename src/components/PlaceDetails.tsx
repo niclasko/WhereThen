@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Place, PlaceLabel, Trip, Visit } from '../types';
+import type { PhotoRecord, Place, PlaceLabel, Trip, Visit } from '../types';
 import { formatDateTime, formatRange } from '../lib/format';
 import { byTime, placeName, spotName } from '../lib/trip';
 import { safeColor, safeImageSrc } from '../lib/nav';
 import { nominatimGeocoder } from '../lib/geocode';
+import { kindInfo } from '../lib/kinds';
 import { PhotoViewer } from './PhotoViewer';
 
 /** Below this level of detail, places are already spots, so photos don't need their own names. */
@@ -11,6 +12,9 @@ const SPOT_RADIUS_KM = 0.3;
 
 interface Props {
   trip: Trip;
+  /** The photos to show (all of the trip's, or those matching the filters). */
+  photos: PhotoRecord[];
+  filtered: boolean;
   place: Place;
   index: number;
   visits: Visit[];
@@ -20,7 +24,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePhotos, onSpot, onClose }: Props) {
+export function PlaceDetails({ trip, photos: shown, filtered, place, index, visits, onRename, onRemovePhotos, onSpot, onClose }: Props) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState<number>();
   const [selected, setSelected] = useState<Set<string>>();
@@ -28,7 +32,8 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
     setViewing(undefined);
     setSelected(undefined);
   }, [place.id]);
-  const photos = trip.photos.filter((p) => p.placeId === place.id).sort(byTime);
+  const photos = shown.filter((p) => p.placeId === place.id).sort(byTime);
+  const allHere = filtered ? trip.photos.filter((p) => p.placeId === place.id).length : photos.length;
   const name = placeName(place, index);
   const showSpots = trip.clusterRadiusKm > SPOT_RADIUS_KM;
   // After removing the last photo in the viewer, show the one before it.
@@ -134,6 +139,11 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
             Select photos
           </button>
         )}
+        {filtered && photos.length < allHere && !selected && (
+          <span className="muted small ai-status">
+            {photos.length} of {allHere} photos match the filters
+          </span>
+        )}
       </div>
       <ul className={`photo-grid ${selected ? 'selecting' : ''}`}>
         {photos.map((photo, i) => {
@@ -148,7 +158,7 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
               <button
                 className={`photo ${isSelected ? 'selected' : ''}`}
                 onClick={() => (selected ? toggle(photo.id) : setViewing(i))}
-                aria-label={`${selected ? 'Select' : 'View'} photo, ${when}${spot ? `, ${spot}` : ''}`}
+                aria-label={`${selected ? 'Select' : 'View'} photo, ${when}${spot ? `, ${spot}` : ''}${photo.ai ? `, ${photo.ai.caption}` : ''}`}
                 aria-pressed={selected ? isSelected : undefined}
               >
                 {selected && (
@@ -161,6 +171,12 @@ export function PlaceDetails({ trip, place, index, visits, onRename, onRemovePho
                 {spot && (
                   <span className="photo-spot muted small" title={spot}>
                     📍 {spot}
+                  </span>
+                )}
+                {photo.ai && (
+                  <span className="photo-caption small" title={photo.ai.caption}>
+                    {kindInfo(photo.ai.kind) && <span aria-hidden>{kindInfo(photo.ai.kind)!.emoji} </span>}
+                    {photo.ai.caption}
                   </span>
                 )}
               </button>

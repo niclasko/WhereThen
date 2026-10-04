@@ -1,4 +1,4 @@
-import type { PhotoRecord, Place, PlaceLabel, Trip, Visit } from '../types';
+import type { PhotoDescription, PhotoRecord, Place, PlaceLabel, Trip, Visit } from '../types';
 import { distanceKm, newId } from './geo';
 
 const PALETTE = [
@@ -172,4 +172,8 @@ export function spotName(photo: PhotoRecord, place: Place | undefined): string |
 
 export function setPhotoSpot(trip: Trip, photoId: string, spot: PlaceLabel | null): Trip {
   return { ...trip, photos: trip.photos.map((p) => (p.id === photoId ? { ...p, spot } : p)) };
+}
+
+export function setPhotoAi(trip: Trip, photoId: string, ai: PhotoDescription): Trip {
+  return { ...trip, photos: trip.photos.map((p) => (p.id === photoId ? { ...p, ai } : p)) };
 }
